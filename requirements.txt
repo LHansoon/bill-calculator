@@ -1,0 +1,4 @@
+pandas
+flask
+gspread
+oauth2client
