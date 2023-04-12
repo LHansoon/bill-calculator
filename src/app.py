@@ -1,5 +1,3 @@
-import json
-
 import pandas as pd
 from flask import Flask, render_template, request
 import decorators
@@ -11,7 +9,6 @@ import copy
 from oauth2client.service_account import ServiceAccountCredentials
 
 global port
-global config
 
 application = Flask(__name__, template_folder="templates")
 logger = application.logger
@@ -40,7 +37,8 @@ def start_mission():
     users = list(set(users))
 
     global port
-    return render_template("home.html", major_content=result_list, recommended_result_list=recommended_result_list, users=users, debt_transfer_procedure=debt_transfer_procedure, host="192.168.2.127", port=port)
+    result = render_template("home.html", major_content=result_list, recommended_result_list=recommended_result_list, users=users, debt_transfer_procedure=debt_transfer_procedure, host="192.168.2.127", port=port)
+    return result, 200
 
 
 @decorators.router_wrapper
@@ -114,15 +112,13 @@ def process_debt_trans():
 
 
 def get_sheet():
-    global port
-    global config
+    SHEET_ID = "1gkVUAVPc7NXV1FBe1b9tp-3x8KcvUEr_BLV5n-wdBco"
 
-    SHEET_ID = config.get("sheet_id")
     scope = [
         'https://www.googleapis.com/auth/drive',
         'https://www.googleapis.com/auth/drive.file'
     ]
-    file_name = config.get("cred_path")
+    file_name = 'credentials.json'
     creds = ServiceAccountCredentials.from_json_keyfile_name(file_name, scope)
     client = gspread.authorize(creds)
 
@@ -181,34 +177,88 @@ def process_link(result, path):
     return trans_result
 
 
-def search_path(graph, currentVertex, visited, result_list):
+def depthFirst(graph, currentVertex, visited, result_list):
     visited.append(currentVertex)
     if graph.get(currentVertex) is not None:
         for vertex in graph[currentVertex]:
             if vertex not in visited:
-                search_path(graph, vertex, visited.copy(), result_list)
+                depthFirst(graph, vertex, visited.copy(), result_list)
     if len(visited) == len(set(visited)):
         if len(visited) > 2:
             result_list.append(visited)
             return
 
 
+def clean_zero_node(arrangement):
+    new_arrangement = arrangement.copy()
+    for each in list(new_arrangement.keys()):
+        for sub_each in list(new_arrangement[each].keys()):
+            new_arrangement[each][sub_each] = round(new_arrangement[each][sub_each], 2)
+            if new_arrangement[each][sub_each] == 0:
+                del new_arrangement[each][sub_each]
+    return new_arrangement
+
+
+def deep_process(arrangement):
+    new_arrangement = arrangement.copy()
+    finished_user = []
+    for user in list(new_arrangement.keys()):
+        user_bill = new_arrangement[user]
+        for sub_user in user_bill.keys():
+            if sub_user not in finished_user and new_arrangement.get(sub_user) is not None:
+                user_need_to_pay = new_arrangement[user][sub_user]
+                sub_user_need_to_pay = new_arrangement[sub_user][user] if new_arrangement[sub_user].get(
+                    user) is not None else -1
+                if sub_user_need_to_pay != -1:
+                    if sub_user in list(user_bill.keys()):
+                        if user_need_to_pay <= sub_user_need_to_pay:
+                            new_arrangement[user][sub_user] = 0
+                            new_arrangement[sub_user][user] = sub_user_need_to_pay - user_need_to_pay
+                        else:
+                            new_arrangement[sub_user][user] = 0
+                            new_arrangement[user][sub_user] = user_need_to_pay - sub_user_need_to_pay
+        finished_user.append(user)
+    return new_arrangement
+
+
 def recommended_own(current_arrangement):
     new_arrangement = copy.deepcopy(current_arrangement)
     debt_transfer_procedure = []
     while True:
-        any_process = False
+        new_arrangement = clean_zero_node(new_arrangement)
+        no_process = True
         for user in list(new_arrangement.keys()):
             result_total_list = []
-            search_path(new_arrangement, user, [], result_total_list)
-            for traversal in result_total_list:
-                any_process = True
-                debt_transfer_procedure.append(process_link(new_arrangement, traversal))
-                break
-            if any_process:
-                break
-        if not any_process:
+            depthFirst(new_arrangement, user, [], result_total_list)
+            if len(result_total_list) != 0:
+                no_process = no_process and False
+            traversal = None
+            if len(result_total_list) > 0:
+                traversal = result_total_list[0]
+                for each in result_total_list:
+                    if len(each) > len(traversal):
+                        traversal = each
+            if traversal is not None:
+                procedure = process_link(new_arrangement, traversal)
+                if procedure.get("amount") != 0:
+                    debt_transfer_procedure.append(procedure)
+
+
+            # if traversal is None:
+            #     debt_transfer_procedure.append(process_link(new_arrangement, traversal))
+
+            # for traversal in result_total_list:
+            #     any_process = True
+            #     debt_transfer_procedure.append(process_link(new_arrangement, traversal))
+            #     break
+            # if any_process:
+            #     break
+        if no_process:
             break
+
+    new_arrangement = deep_process(new_arrangement)
+    new_arrangement = clean_zero_node(new_arrangement)
+
 
     return new_arrangement, debt_transfer_procedure
 
@@ -297,29 +347,10 @@ def processor():
             real_final_result[user][key] = result[key][user]
 
     # deep process 为了避免你给我转十块我给你转十块的事情发生
-    finished_user = []
-    for user in list(real_final_result.keys()):
-        user_bill = real_final_result[user]
-        for sub_user in user_bill.keys():
-            if sub_user not in finished_user and real_final_result.get(sub_user) is not None:
-                user_need_to_pay = real_final_result[user][sub_user]
-                sub_user_need_to_pay = real_final_result[sub_user][user] if real_final_result[sub_user].get(user) is not None else -1
-                if sub_user_need_to_pay != -1:
-                    if sub_user in list(user_bill.keys()):
-                        if user_need_to_pay <= sub_user_need_to_pay:
-                            real_final_result[user][sub_user] = 0
-                            real_final_result[sub_user][user] = sub_user_need_to_pay - user_need_to_pay
-                        else:
-                            real_final_result[sub_user][user] = 0
-                            real_final_result[user][sub_user] = user_need_to_pay - sub_user_need_to_pay
-        finished_user.append(user)
+    real_final_result = deep_process(real_final_result)
 
     # 去掉0
-    for each in list(real_final_result.keys()):
-        for sub_each in list(real_final_result[each].keys()):
-            real_final_result[each][sub_each] = round(real_final_result[each][sub_each], 2)
-            if real_final_result[each][sub_each] == 0:
-                del real_final_result[each][sub_each]
+    real_final_result = clean_zero_node(real_final_result)
 
     # 那0都去掉了，就可能出现空的dict，也要去掉
     for each in list(real_final_result.keys()):
@@ -331,9 +362,6 @@ def processor():
 
 if __name__ == '__main__':
     global port
-    global config
-
-    config = json.loads(open("config.json", "r").read())
 
     args = sys.argv
     port = 8000
