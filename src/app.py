@@ -290,7 +290,7 @@ def processor():
             split_with_people_num = len(who)
             row_users = list()
 
-            indicator_sum = split_with_people_num
+            indicator_sum = 0
             user_percentage = dict()
             for each_user in who:
                 name_search = re.search(r"(.*)\([0-9]+\)", each_user)
@@ -311,6 +311,8 @@ def processor():
                 if user_name not in row_users and each_user != "":
                     row_users.append(user_name)
 
+            if indicator_sum == 0:
+                indicator_sum = split_with_people_num
             person_paid_for_it = row["from"]
 
             for each_user in row_users:
