@@ -50,25 +50,12 @@ def process_pay():
     to_who = json_request.get("to")
     amount = json_request.get("amount")
 
-    # construct row
-    result = dict()
-
     time_now = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
-    result["date"] = time_now
-    result["from"] = from_who
-    result["to"] = to_who
-    result["product"] = "进行一个钱的还💰"
-    result["price"] = amount
-    result["type"] = "pay"
+    # date, from, to, product, price, tax_flg, who, type
+    result = [time_now, from_who, to_who, "进行一个钱的还💰", amount, None, None, "pay"]
 
     sheet_content, sheet = get_sheet()
-    df = pd.DataFrame(sheet_content)
-    df = pd.concat([df, pd.DataFrame(result, columns=df.columns, index=[0])])
-    df = df.where(pd.notnull(df), None)
-
-    value_list = df.values.tolist()
-    final_result = [df.columns.values.tolist()] + value_list
-    sheet.update(final_result)
+    sheet.append_row(result, table_range="A1:H1")
 
     return "mission processed", 200
 
