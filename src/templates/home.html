@@ -44,8 +44,18 @@
 <div id="major-container">
     <div id="major-content">
         <h2>现在呢就是这么个状况：</h2>
-        {% for row in major_content %}
-            <p>{{row}}</p>
+        {% for key, value in major_content.items() %}
+            <p>
+
+                {{key}}: {
+                {% for sub_key, sub_value in value.items() %}
+                    "{{sub_key}}": {{ sub_value }} <button class="clear_debt_btn" data-from="{{ key }}" data-to="{{ sub_key }}" data-amount="{{ sub_value }}" onclick="clearDebt(this)">还钱</button>
+
+                {% endfor %}
+                }
+
+
+            </p>
         {% endfor %}
         <button onClick='window.location.reload();'>Refresh Page</button>
     </div>
@@ -81,13 +91,13 @@
     <form id="pay-form">
         <label for="from">From:</label><br>
         <select id="from" name="from">
-            {% for user in users %}
+            {% for user in from_users %}
                 <option value="{{user}}">{{user}}</option>
             {% endfor %}
         </select><br>
         <label for="to">To:</label><br>
         <select id="to" name="to">
-            {% for user in users %}
+            {% for user in to_users %}
                 <option value="{{user}}">{{user}}</option>
             {% endfor %}
         </select><br>
@@ -130,6 +140,25 @@
             returnArray[formArray[i]['name']] = formArray[i]['value'];
         }
         return returnArray;
+    }
+
+    function clearDebt(btn) {
+        let from = btn.getAttribute("data-from")
+        let to = btn.getAttribute("data-to")
+        let amount = btn.getAttribute("data-amount")
+
+        let xhr = new XMLHttpRequest();
+        xhr.open('POST','http://{{host}}:{{port}}/pay')
+        xhr.setRequestHeader("Content-Type", "application/json");
+
+        //send the form data
+        xhr.send(JSON.stringify({"from": from, "to": to, "amount": amount}));
+        xhr.onreadystatechange = function() {
+            if (xhr.readyState === XMLHttpRequest.DONE) {
+                alert("Finished, page will be reloaded")
+                window.location.reload();
+            }
+        }
     }
 
     var form = document.getElementById('pay-form');

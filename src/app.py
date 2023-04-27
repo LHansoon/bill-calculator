@@ -20,24 +20,31 @@ def start_mission():
 
     recommended_result, debt_transfer_procedure = recommended_own(result)
 
-    result_list = list()
     users = list()
+    to_users = list()
+    from_users = list(result.keys())
 
     for user in result.keys():
         users.append(user)
-        result_list.append(f"{user}: {result[user]}")
         for sub_user in result[user].keys():
             users.append(sub_user)
+            to_users.append(sub_user)
+    to_users = list(set(to_users))
 
     recommended_result_list = list()
     for user in recommended_result.keys():
         users.append(user)
         recommended_result_list.append(f"{user}: {recommended_result[user]}")
 
-    users = list(set(users))
-
     global port
-    result = render_template("home.html", major_content=result_list, recommended_result_list=recommended_result_list, users=users, debt_transfer_procedure=debt_transfer_procedure, host="192.168.2.127", port=port)
+    result = render_template("home.html",
+                             major_content=result,
+                             recommended_result_list=recommended_result_list,
+                             from_users=from_users,
+                             to_users=to_users,
+                             debt_transfer_procedure=debt_transfer_procedure,
+                             host="192.168.2.127",
+                             port=port)
     return result, 200
 
 
