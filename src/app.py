@@ -116,7 +116,7 @@ def get_sheet():
 
 def get_all_users(df):
     users = []
-    for each_name_combination in df["who"].unique().tolist():
+    for each_name_combination in (df["who"].unique().tolist() + df["from"].unique().tolist()):
         names = each_name_combination.strip().split(",")
         for name in names:
             name = name.strip()
