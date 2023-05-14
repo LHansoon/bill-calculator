@@ -127,7 +127,7 @@ def get_all_users(df):
         names = each_name_combination.strip().split(",")
         for name in names:
             name = name.strip()
-            name_search = re.search(r"(.*)\([0-9]+\)", name)
+            name_search = re.search(r"(.*)\(([0-9]+.?[0-9]*)\)", name)
             if name_search is not None:
                 name = name_search[1]
             if name not in users and name != "":
@@ -287,15 +287,15 @@ def processor():
             indicator_sum = 0
             user_percentage = dict()
             for each_user in who:
-                name_search = re.search(r"(.*)\([0-9]+\)", each_user)
+                name_search = re.search(r"(.*)\(([0-9]+.?[0-9]*)\)", each_user)
                 user_name = each_user
                 partial_indicator = 1
 
                 if name_search is not None:
                     user_name = name_search[1]
-                    partial_indicator_match = re.search(r".*\(([0-9]+)\)", each_user)
+                    partial_indicator_match = re.search(r"(.*)\(([0-9]+.?[0-9]*)\)", each_user)
                     if partial_indicator_match is not None:
-                        partial_indicator = int(partial_indicator_match[1])
+                        partial_indicator = float(partial_indicator_match[2])
                         indicator_sum += partial_indicator
                     else:
                         indicator_sum = split_with_people_num
