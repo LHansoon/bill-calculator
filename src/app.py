@@ -292,7 +292,7 @@ def processor():
                 partial_indicator = 1
 
                 if name_search is not None:
-                    user_name = name_search[1]
+                    user_name = name_search[1].strip()
                     partial_indicator_match = re.search(r"(.*)\(([0-9]+.?[0-9]*)\)", each_user)
                     if partial_indicator_match is not None:
                         partial_indicator = float(partial_indicator_match[2])
@@ -316,7 +316,10 @@ def processor():
                 price_each_user = row["price"] * user_split_percentage if not tax_flag else row["price"] * 1.15 * user_split_percentage
 
                 if each_user != person_paid_for_it:
-                    result[person_paid_for_it][each_user] += price_each_user
+                    try:
+                        result[person_paid_for_it][each_user] += price_each_user
+                    except Exception as e:
+                        print("wf")
         elif row["type"] == "pay":
             from_who = row["from"]
             to_who = row["to"]
