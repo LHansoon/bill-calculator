@@ -1,3 +1,5 @@
+import os
+
 import pandas as pd
 from flask import Flask, render_template, request
 import decorators
@@ -8,11 +10,10 @@ import gspread
 import copy
 from oauth2client.service_account import ServiceAccountCredentials
 
-global port
-
 application = Flask(__name__, template_folder="templates")
 logger = application.logger
 
+global port
 
 @application.route("/process-mission", methods=["GET"])
 def start_mission():
@@ -37,14 +38,15 @@ def start_mission():
         recommended_result_list.append(f"{user}: {recommended_result[user]}")
 
     global port
+    port_num = 80
     result = render_template("home.html",
                              major_content=result,
                              recommended_result_list=recommended_result_list,
                              from_users=from_users,
                              to_users=to_users,
                              debt_transfer_procedure=debt_transfer_procedure,
-                             host="192.168.2.127",
-                             port=port)
+                             host="1009-bill.us-east-1.elasticbeanstalk.com",
+                             port=port_num)
     return result, 200
 
 
@@ -64,6 +66,13 @@ def process_pay():
     sheet_content, sheet = get_sheet()
     sheet.append_row(result, table_range="A1:H1")
 
+    return "mission processed", 200
+
+
+
+@decorators.router_wrapper
+@application.route("/health", methods=["GET"])
+def health():
     return "mission processed", 200
 
 

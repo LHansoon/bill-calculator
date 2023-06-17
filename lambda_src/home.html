@@ -1,0 +1,218 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>home</title>
+    <style>
+        #pay-section {
+            float: left;
+            width: 15%;
+        }
+
+        #sheet_viewer {
+            float: right;
+            width: 85%;
+            height: 500px;
+        }
+
+        /*#hover_view {*/
+        /*    background-color: black;*/
+        /*    height: 300px;*/
+        /*}*/
+
+        #major-container {
+            display: flex;
+            flex-wrap: wrap;
+        }
+
+        #major-content {
+            width: 50%;
+        }
+
+        #major-content-recommended {
+            width: 50%;
+        }
+
+        .debt-trans-row {
+            display: none;
+        }
+
+    </style>
+</head>
+<body>
+
+<div id="major-container">
+    <div id="major-content">
+        <h2>现在呢就是这么个状况：</h2>
+        {% for key, value in major_content.items() %}
+            <p>
+
+                {{key}}: {
+                {% for sub_key, sub_value in value.items() %}
+                    "{{sub_key}}": {{ sub_value }} <button class="clear_debt_btn" data-from="{{ key }}" data-to="{{ sub_key }}" data-amount="{{ sub_value }}" onclick="clearDebt(this)">还钱</button>
+
+                {% endfor %}
+                }
+
+
+            </p>
+        {% endfor %}
+        <button onClick='window.location.reload();'>Refresh Page</button>
+    </div>
+
+
+    <div id="major-content-recommended">
+        <h2>但是这样呢，能转钱转的简单点：</h2>
+        {% for row in recommended_result_list %}
+            <p>{{row}}</p>
+        {% endfor %}
+        <hr>
+
+        {% for procedure in debt_transfer_procedure %}
+            <form class="debt-trans-form">
+                <p>[{{procedure["from"]}}]将[{{procedure["about_who"]}}][{{procedure["amount"]}}]的债务转移给[{{procedure["to"]}}]</p>
+                <input type="text" class="debt-trans-row" name="from" value={{procedure["from"]}}>
+                <input type="text" class="debt-trans-row" name="to" value={{procedure["to"]}}>
+                <input type="text" class="debt-trans-row" name="about_who" value={{procedure["about_who"]}}>
+                <input type="text" class="debt-trans-row" name="amount" value={{procedure["amount"]}}>
+            </form>
+        {% endfor %}
+        <button id="debt-trans-submit" onclick="AbortController">就这么办吧！</button>
+
+</div>
+
+</div>
+
+
+<hr>
+
+<div id="pay-section">
+    <h2>Add transaction</h2>
+    <form id="pay-form">
+        <label for="from">From:</label><br>
+        <select id="from" name="from">
+            {% for user in from_users %}
+                <option value="{{user}}">{{user}}</option>
+            {% endfor %}
+        </select><br>
+        <label for="to">To:</label><br>
+        <select id="to" name="to">
+            {% for user in to_users %}
+                <option value="{{user}}">{{user}}</option>
+            {% endfor %}
+        </select><br>
+        <label for="amount">Amount:</label><br>
+        <input type="text" id="amount" name="amount" value=0><br>
+        <input type="submit" value="add transaction">
+    </form>
+</div>
+
+
+<div id="sheet_viewer">
+    <p>If no permission, request for the permission, then refresh</p>
+    <a target="_blank" href="https://docs.google.com/spreadsheets/d/1gkVUAVPc7NXV1FBe1b9tp-3x8KcvUEr_BLV5n-wdBco/edit#gid=0">https://docs.google.com/spreadsheets/d/1gkVUAVPc7NXV1FBe1b9tp-3x8KcvUEr_BLV5n-wdBco/edit#gid=0</a>
+    <iframe
+            src="https://docs.google.com/spreadsheets/d/1gkVUAVPc7NXV1FBe1b9tp-3x8KcvUEr_BLV5n-wdBco/edit?usp=sharing?&rm=minimal&single=true&widget=false;"
+            height="100%"
+            width="100%"
+    ></iframe>
+
+</div>
+
+
+<div id="hover_view">
+
+
+</div>
+
+
+
+
+
+</body>
+
+
+<script>
+    function objectifyForm(formArray) {
+        //serialize data function
+        let returnArray = {};
+        for (var i = 0; i < formArray.length; i++){
+            returnArray[formArray[i]['name']] = formArray[i]['value'];
+        }
+        return returnArray;
+    }
+
+    function clearDebt(btn) {
+        let from = btn.getAttribute("data-from")
+        let to = btn.getAttribute("data-to")
+        let amount = btn.getAttribute("data-amount")
+
+        let xhr = new XMLHttpRequest();
+        xhr.open('POST','http://{{host}}/pay')
+        xhr.setRequestHeader("Content-Type", "application/json");
+
+        //send the form data
+        xhr.send(JSON.stringify({"from": from, "to": to, "amount": amount}));
+        xhr.onreadystatechange = function() {
+            if (xhr.readyState === XMLHttpRequest.DONE) {
+                alert("Finished, page will be reloaded")
+                window.location.reload();
+            }
+        }
+    }
+
+    var form = document.getElementById('pay-form');
+    form.onsubmit = function(event){
+        let xhr = new XMLHttpRequest();
+        let formData = new FormData(form);
+        //open the request
+        xhr.open('POST','http://{{host}}/pay')
+        xhr.setRequestHeader("Content-Type", "application/json");
+
+        //send the form data
+        xhr.send(JSON.stringify(Object.fromEntries(formData)));
+
+        xhr.onreadystatechange = function() {
+            if (xhr.readyState === XMLHttpRequest.DONE) {
+                alert("Finished, page will be reloaded")
+                window.location.reload();
+            }
+        }
+        //Fail the onsubmit to avoid page refresh.
+        return false;
+    }
+
+    let debt_trans_btn = document.getElementById("debt-trans-submit")
+    debt_trans_btn.onclick = function (event) {
+        let debt_trans_forms = document.getElementsByClassName("debt-trans-form")
+
+        let result_json_list = []
+        for (var i = 0; i < debt_trans_forms.length; i++){
+            result_json_list.push(objectifyForm(debt_trans_forms[i]))
+        }
+        let xhr = new XMLHttpRequest();
+
+        let json_data = JSON.stringify(result_json_list)
+
+        if (json_data !== "[]"){
+            xhr.open('POST','http://{{host}}/debt-trans')
+            xhr.setRequestHeader("Content-Type", "application/json");
+
+            //send the form data
+
+            xhr.send(json_data);
+
+            xhr.onreadystatechange = function() {
+                if (xhr.readyState === XMLHttpRequest.DONE) {
+                    alert("中嘞哥ᕕ( ᐛ )ᕗ, page will be reloaded")
+                    window.location.reload();
+                }
+            }
+        } else {
+            alert("已经可以了，已经是最优解了，可以不用再卷了( ʘ̅ι_ʘ̅ )")
+        }
+
+    }
+
+</script>
+</html>

@@ -6,5 +6,7 @@ def router_wrapper(func):
             return result
         except Exception as e:
             return str(traceback.format_exc())
+
+    wrap.__name__ = func.__name__
     return wrap
 

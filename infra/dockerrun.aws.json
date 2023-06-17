@@ -1,0 +1,23 @@
+{
+  "AWSEBDockerrunVersion": 2,
+  "containerDefinitions": [
+    {
+      "name": "bill-app",
+      "image": "572010479953.dkr.ecr.us-east-1.amazonaws.com/bill-app:latest",
+      "environment": [
+        {
+          "name": "Container",
+          "value": "bill"
+        }
+      ],
+      "essential": true,
+      "memory": 128,
+      "portMappings": [
+        {
+          "containerPort": 8000,
+          "hostPort": 8000
+        }
+      ]
+    }
+  ]
+}

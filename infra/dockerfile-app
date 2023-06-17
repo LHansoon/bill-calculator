@@ -1,0 +1,10 @@
+FROM python:3.9
+ENV FLASK_APP=app.py
+ENV FLASK_ENV=development
+ENV FLASK_DEBUG=1
+WORKDIR /work
+COPY ./src /work
+COPY ./requirements.txt /work
+EXPOSE 8000
+RUN pip install -r /work/requirements.txt
+CMD ["python", "-m", "flask", "run", "--port", "8000", "--host", "0.0.0.0", "--with-threads"]
