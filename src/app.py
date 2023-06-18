@@ -18,8 +18,8 @@ logger = application.logger
 def start_mission():
     result = processor()
 
-    recommended_result, debt_transfer_procedure = recommended_own(result)
-
+    # recommended_result, debt_transfer_procedure = recommended_own(result)
+    recommended_result, debt_transfer_procedure = recommended_own_sub(result)
     users = list()
     to_users = list()
     from_users = list(result.keys())
@@ -121,7 +121,7 @@ def get_sheet():
     return python_sheet, sheet
 
 
-def get_all_users(df):
+def get_all_users_from_df(df):
     users = []
     for each_name_combination in (df["who"].unique().tolist() + df["from"].unique().tolist()):
         names = each_name_combination.strip().split(",")
@@ -171,6 +171,111 @@ def process_link(result, path):
     return trans_result
 
 
+
+def get_processable_path(dictionary, path):
+    result_list = list()
+    for i in range(len(path) - 1):
+        curr = path[i]
+        next = path[i + 1]
+        if next in dictionary[curr]:
+            if len(result_list) == 0:
+                result_list.append(curr)
+            result_list.append(next)
+        else:
+            if len(result_list) > 2:
+                return result_list
+            result_list = list()
+    if len(result_list) > 2:
+        return result_list
+    return []
+
+
+def build_trans_procedure(from_who, to_who, about_who, amount):
+    trans_result = dict()
+    trans_result["from"] = from_who
+    trans_result["to"] = to_who
+    trans_result["about_who"] = about_who
+    trans_result["amount"] = amount
+    return trans_result
+
+
+
+def process_link_2(dictionary, path):
+    trans_result = list()
+
+    # break the loop
+    suspect_first_occurrence = path.index(path[-1])
+    if suspect_first_occurrence != len(path) - 1:
+        loop_path = path.copy()
+        loop_path = loop_path[suspect_first_occurrence:]
+        smallest_length = float('inf')
+        for i in range(len(loop_path) - 1):
+            curr = loop_path[i]
+            next = loop_path[i + 1]
+            length = dictionary[curr][next]
+            if length < smallest_length:
+                smallest_length = length
+        for i in range(len(loop_path) - 1):
+            curr = loop_path[i]
+            next = loop_path[i + 1]
+            length = dictionary[curr][next]
+            if length == smallest_length:
+                del dictionary[curr][next]
+            else:
+                dictionary[curr][next] -= smallest_length
+            trans_result.append(build_trans_procedure(curr, next, curr, smallest_length))
+
+    # start to break connections
+    processable_path = get_processable_path(dictionary, path)
+    while processable_path != []:
+        i = 0
+        loop_range = len(processable_path) - 2
+        rerun = False
+        while i < loop_range:
+            if rerun:
+                i = 0
+                loop_range = len(processable_path) - 2
+                if loop_range < 1:
+                    break
+                else:
+                    rerun = False
+                    continue
+            curr = processable_path[i]
+            next = processable_path[i + 1]
+            next_next = processable_path[i + 2]
+            curr_to_next_length = dictionary[curr][next]
+            next_to_next_next_length = dictionary[next][next_next]
+            if curr_to_next_length >= next_to_next_next_length:
+                del dictionary[next][next_next]
+                dictionary[curr][next] -= next_to_next_next_length
+                if dictionary[curr][next] == 0:
+                    del dictionary[curr][next]
+                if next_next in dictionary[curr]:
+                    dictionary[curr][next_next] += next_to_next_next_length
+                else:
+                    dictionary[curr][next_next] = next_to_next_next_length
+                processable_path.remove(next)
+                rerun = True
+                trans_result.append(build_trans_procedure(curr, next, next_next, next_to_next_next_length))
+            elif curr_to_next_length < next_to_next_next_length:
+                del dictionary[curr][next]
+                dictionary[next][next_next] -= curr_to_next_length
+                if dictionary[next][next_next] == 0:
+                    del dictionary[next][next_next]
+                if next_next in dictionary[curr]:
+                    dictionary[curr][next_next] += curr_to_next_length
+                else:
+                    dictionary[curr][next_next] = curr_to_next_length
+                processable_path.remove(next)
+                rerun = True
+                trans_result.append(build_trans_procedure(curr, next, next_next, curr_to_next_length))
+            i += 1
+        processable_path = get_processable_path(dictionary, path)
+
+    return dictionary, trans_result
+
+
+
 def depthFirst(graph, currentVertex, visited, result_list):
     visited.append(currentVertex)
     if graph.get(currentVertex) is not None:
@@ -215,27 +320,68 @@ def deep_process(arrangement):
     return new_arrangement
 
 
+def get_transfer_chain(current_arrangement):
+    transfer_chain_list = list()
+    _get_transfer_chain(current_arrangement, current_arrangement, transfer_chain_list, [])
+    return max(transfer_chain_list, key=len)
+
+
+def _get_transfer_chain(segment, current_arrangement, transfer_chain_list, curr_list):
+    for user in segment:
+        if user in curr_list:
+            curr_list.append(user)
+            transfer_chain_list.append(curr_list.copy())
+        elif user in current_arrangement:
+            curr_list.append(user)
+            _get_transfer_chain(current_arrangement[user], current_arrangement, transfer_chain_list, curr_list)
+        else:
+            curr_list.append(user)
+            transfer_chain_list.append(curr_list.copy())
+        curr_list.pop()
+
+
+
+def recommended_own_sub(current_arrangement):
+    current_arrangement_copy = copy.deepcopy(current_arrangement)
+    process_chain = get_transfer_chain(current_arrangement_copy)
+
+    debt_transfer_procedure = []
+    while len(process_chain) > 2:
+        current_arrangement_copy, debt_transfer_procedure_snip = process_link_2(current_arrangement_copy, process_chain)
+        debt_transfer_procedure.extend(debt_transfer_procedure_snip)
+        process_chain = get_transfer_chain(current_arrangement_copy)
+
+    return current_arrangement_copy, debt_transfer_procedure
+
+
+
 def recommended_own(current_arrangement):
     new_arrangement = copy.deepcopy(current_arrangement)
     debt_transfer_procedure = []
     while True:
         new_arrangement = clean_zero_node(new_arrangement)
-        no_process = True
-        for user in list(new_arrangement.keys()):
-            result_total_list = []
-            depthFirst(new_arrangement, user, [], result_total_list)
-            if len(result_total_list) != 0:
-                no_process = no_process and False
-            traversal = None
-            if len(result_total_list) > 0:
-                traversal = result_total_list[0]
-                for each in result_total_list:
-                    if len(each) > len(traversal):
-                        traversal = each
-            if traversal is not None:
-                procedure = process_link(new_arrangement, traversal)
-                if procedure.get("amount") != 0:
-                    debt_transfer_procedure.append(procedure)
+        # no_process = True
+        # for user in list(new_arrangement.keys()):
+        #     result_total_list = []
+        #     depthFirst(new_arrangement, user, [], result_total_list)
+        #     if len(result_total_list) != 0:
+        #         no_process = no_process and False
+        #     traversal = None
+        #     if len(result_total_list) > 0:
+        #         traversal = result_total_list[0]
+        #         for each in result_total_list:
+        #             if len(each) > len(traversal):
+        #                 traversal = each
+        #     if traversal is not None:
+        #         procedure = process_link(new_arrangement, traversal)
+        #         if procedure.get("amount") != 0:
+        #             debt_transfer_procedure.append(procedure)
+        transfer_chain = get_transfer_chain(current_arrangement)
+        if len(transfer_chain) > 0:
+            procedure = process_link(new_arrangement, transfer_chain)
+            debt_transfer_procedure.extend(procedure)
+
+
 
 
             # if traversal is None:
@@ -247,8 +393,8 @@ def recommended_own(current_arrangement):
             #     break
             # if any_process:
             #     break
-        if no_process:
-            break
+        # if no_process:
+        #     break
 
     new_arrangement = deep_process(new_arrangement)
     new_arrangement = clean_zero_node(new_arrangement)
@@ -263,11 +409,16 @@ def processor():
 
     df["who"] = df["who"].apply(lambda x: str(x).replace("，", ",").replace("（", "(").replace("）", ")"))
 
-    users = get_all_users(df)
+    users = get_all_users_from_df(df)
 
     result = dict()
 
-    # pay book initialize
+    # initialize the result map
+    #     {
+    #         "user1": {user1, user2, user3},
+    #         "user2": {user1, user2, user3},
+    #         "user3": {user1, user2, user3}
+    #     }
     for user in users:
         result[user] = dict()
         for sub_user in users:
@@ -281,15 +432,21 @@ def processor():
             tax_flag = True if row["tax_flg"] == "y" else False
 
             who = row["who"].strip().split(",")
+            who = [str.strip(i) for i in who]
             split_with_people_num = len(who)
-            row_users = list()
+            raw_who = list()
 
             indicator_sum = 0
             user_percentage = dict()
             for each_user in who:
-                each_user = each_user.strip()
-                name_search = re.search(r"(.*)\(([0-9]+.?[0-9]*)\)", each_user)
+                # we search the format for "hanson(3)"
+                name_search = None
+                if "(" in each_user:
+                    name_search = re.search(r"(.*)\(([0-9]+.?[0-9]*)\)", each_user)
+
                 user_name = each_user
+
+                # partial_indicator / indicator_sum = user percentage
                 partial_indicator = 1
 
                 if name_search is not None:
@@ -303,14 +460,13 @@ def processor():
 
                 user_percentage.update({user_name: partial_indicator})
 
-                if user_name not in row_users and each_user != "":
-                    row_users.append(user_name)
+                if user_name not in raw_who and each_user != "":
+                    raw_who.append(user_name)
 
             if indicator_sum == 0:
                 indicator_sum = split_with_people_num
             person_paid_for_it = row["from"]
-
-            for each_user in row_users:
+            for each_user in raw_who:
                 user_split_indicator = user_percentage.get(each_user)
                 user_split_percentage = user_split_indicator / indicator_sum
 
