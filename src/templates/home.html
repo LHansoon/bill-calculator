@@ -63,8 +63,16 @@
 
     <div id="major-content-recommended">
         <h2>但是这样呢，能转钱转的简单点：</h2>
-        {% for row in recommended_result_list %}
-            <p>{{row}}</p>
+        {% for key, value in recommended_result.items() %}
+            <p>
+                {% set ns = namespace(sum_value = 0) %}
+                {{key}}: {
+                {% for sub_key, sub_value in value.items() %}
+                    "{{sub_key}}": {{ sub_value }}
+                    {% set ns.sum_value = ns.sum_value + sub_value %}
+                {% endfor %}
+                } sum: {{ ns.sum_value | round(2) }}
+            </p>
         {% endfor %}
         <hr>
 
