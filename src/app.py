@@ -274,9 +274,9 @@ def processor(sheet_content):
     user_statistics = pd.DataFrame(columns=["date", "user", "amount"])
     df = pd.DataFrame(sheet_content)
 
-    date_column = pd.to_datetime(df["date"], format='%Y-%m-%d %H:%M:%S', errors='coerce').dt.date
-    date_column.update(pd.to_datetime(df[date_column.isnull()]["date"], format='%Y-%m-%d', errors='coerce').dt.date)
-    df["date"] = date_column
+    date_column = pd.to_datetime(df["date"], format='%Y-%m-%d %H:%M:%S', errors='coerce')
+    date_column.update(pd.to_datetime(df[date_column.isnull()]["date"], format='%Y-%m-%d', errors='coerce'))
+    df["date"] = date_column.dt.date
 
     df["who"] = df["who"].apply(lambda x: str(x).replace("，", ",").replace("（", "(").replace("）", ")"))
 
