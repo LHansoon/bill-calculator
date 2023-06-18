@@ -1,7 +1,7 @@
 import pandas as pd
 from flask import Flask, render_template, request
 import decorators
-from datetime import datetime
+from datetime import datetime, date, timedelta
 import sys
 import re
 import gspread
@@ -16,8 +16,11 @@ logger = application.logger
 
 @application.route("/process-mission", methods=["GET"])
 def start_mission():
-    result = processor()
+    sheet_content, _ = get_sheet()
+    result, user_statistics = processor(sheet_content)
     recommended_result, debt_transfer_procedure = optimize_transfer(result)
+
+    summary, curr_month_summary, last_month_summary = get_summary(user_statistics)
 
     users = list()
     to_users = list()
@@ -30,11 +33,6 @@ def start_mission():
             to_users.append(sub_user)
     to_users = list(set(to_users))
 
-    # recommended_result_list = list()
-    # for user in recommended_result.keys():
-    #     users.append(user)
-    #     recommended_result_list.append(f"{user}: {recommended_result[user]}")
-
     global port
     result = render_template("home.html",
                              major_content=result,
@@ -42,6 +40,9 @@ def start_mission():
                              from_users=from_users,
                              to_users=to_users,
                              debt_transfer_procedure=debt_transfer_procedure,
+                             summary=summary,
+                             curr_month_summary=curr_month_summary,
+                             last_month_summary=last_month_summary,
                              host="192.168.2.127",
                              port=port)
     return result, 200
@@ -101,6 +102,39 @@ def process_debt_trans():
     sheet.update(final_result)
 
     return "mission processed", 200
+
+
+def get_summary(df_user_statistics):
+    total_summary = dict()
+    current_month_summary = dict()
+    previouse_month_summary = dict()
+
+
+    today = date.today()
+    curr_month_start = today.replace(day=1)
+    last_month_end = curr_month_start - timedelta(days=1)
+    last_month_start = last_month_end.replace(day=1)
+
+
+
+    users = df_user_statistics["user"].unique()
+    for user in users:
+        user_df = df_user_statistics.loc[df_user_statistics["user"] == user]
+        user_df_last_month = user_df.loc[(user_df['date'] >= last_month_start) & (user_df['date'] <= last_month_end)]
+        user_df_curr_month = user_df.loc[(user_df['date'] >= curr_month_start) & (user_df['date'] <= today)]
+
+        total_summary[user] = user_df["amount"].sum()
+        current_month_summary[user] = user_df_curr_month["amount"].sum()
+        previouse_month_summary[user] = user_df_last_month["amount"].sum()
+
+        if total_summary[user] == 0:
+            del total_summary[user]
+        if current_month_summary[user] == 0:
+            del current_month_summary[user]
+        if previouse_month_summary[user] == 0:
+            del previouse_month_summary[user]
+
+    return total_summary, current_month_summary, previouse_month_summary
 
 
 def get_sheet():
@@ -236,9 +270,13 @@ def optimize_transfer(current_arrangement):
     return new_arrangement, debt_transfer_procedure
 
 
-def processor():
-    sheet_content, _ = get_sheet()
+def processor(sheet_content):
+    user_statistics = pd.DataFrame(columns=["date", "user", "amount"])
     df = pd.DataFrame(sheet_content)
+
+    date_column = pd.to_datetime(df["date"], format='%Y-%m-%d %H:%M:%S', errors='coerce').dt.date
+    date_column.update(pd.to_datetime(df[date_column.isnull()]["date"], format='%Y-%m-%d', errors='coerce').dt.date)
+    df["date"] = date_column
 
     df["who"] = df["who"].apply(lambda x: str(x).replace("，", ",").replace("（", "(").replace("）", ")"))
 
@@ -307,6 +345,7 @@ def processor():
 
                 if each_user != person_paid_for_it:
                     result[person_paid_for_it][each_user] += price_each_user
+                user_statistics = pd.concat([user_statistics, pd.DataFrame([[row["date"], each_user, price_each_user]], columns=user_statistics.columns)], ignore_index=True)
 
         elif row["type"] == "pay":
             from_who = row["from"]
@@ -344,7 +383,7 @@ def processor():
         if len(real_final_result[each]) == 0:
             del real_final_result[each]
 
-    return real_final_result
+    return real_final_result, user_statistics
 
 
 if __name__ == '__main__':

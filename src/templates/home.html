@@ -20,7 +20,7 @@
         /*    height: 300px;*/
         /*}*/
 
-        #major-container {
+        #major-container, #summary-section{
             display: flex;
             flex-wrap: wrap;
         }
@@ -35,6 +35,14 @@
 
         .debt-trans-row {
             display: none;
+        }
+
+        .summary-block {
+            width: 30%;
+        }
+
+        #summary-section h2 {
+            width: 100%;
         }
 
     </style>
@@ -87,12 +95,47 @@
         {% endfor %}
         <button id="debt-trans-submit" onclick="AbortController">就这么办吧！</button>
 
-</div>
+    </div>
 
 </div>
 
 
 <hr>
+
+<div id="summary-section">
+    <h2>Summary</h2>
+    <div class="summary-block">
+        <h3>Current month：</h3>
+        {% for key, value in curr_month_summary.items() %}
+            <p>
+                {{key}}: {{ value }}
+            </p>
+        {% endfor %}
+    </div>
+
+    <div class="summary-block">
+        <h3>Last month：</h3>
+        {% for key, value in last_month_summary.items() %}
+            <p>
+                {{key}}: {{ value }}
+            </p>
+        {% endfor %}
+    </div>
+
+    <div class="summary-block">
+        <h3>Total summary：</h3>
+        {% for key, value in summary.items() %}
+            <p>
+                {{key}}: {{ value }}
+            </p>
+        {% endfor %}
+    </div>
+</div>
+
+
+
+<hr>
+
 
 <div id="pay-section">
     <h2>Add transaction</h2>
