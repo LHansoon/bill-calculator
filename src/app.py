@@ -1,25 +1,26 @@
-import os
-
 import pandas as pd
 from flask import Flask, render_template, request
 import decorators
-from datetime import datetime
+from datetime import datetime, date, timedelta
 import sys
 import re
 import gspread
 import copy
 from oauth2client.service_account import ServiceAccountCredentials
 
+global port
+
 application = Flask(__name__, template_folder="templates")
 logger = application.logger
 
-global port
 
 @application.route("/process-mission", methods=["GET"])
 def start_mission():
-    result = processor()
+    sheet_content, _ = get_sheet()
+    result, user_statistics = processor(sheet_content)
+    recommended_result, debt_transfer_procedure = optimize_transfer(result)
 
-    recommended_result, debt_transfer_procedure = recommended_own(result)
+    summary, curr_month_summary, last_month_summary = get_summary(user_statistics)
 
     users = list()
     to_users = list()
@@ -32,21 +33,18 @@ def start_mission():
             to_users.append(sub_user)
     to_users = list(set(to_users))
 
-    recommended_result_list = list()
-    for user in recommended_result.keys():
-        users.append(user)
-        recommended_result_list.append(f"{user}: {recommended_result[user]}")
-
     global port
-    port_num = 80
     result = render_template("home.html",
                              major_content=result,
-                             recommended_result_list=recommended_result_list,
+                             recommended_result=recommended_result,
                              from_users=from_users,
                              to_users=to_users,
                              debt_transfer_procedure=debt_transfer_procedure,
-                             host="1009-bill.us-east-1.elasticbeanstalk.com",
-                             port=port_num)
+                             summary=summary,
+                             curr_month_summary=curr_month_summary,
+                             last_month_summary=last_month_summary,
+                             host="192.168.2.127",
+                             port=port)
     return result, 200
 
 
@@ -67,14 +65,6 @@ def process_pay():
     sheet.append_row(result, table_range="A1:H1")
 
     return "mission processed", 200
-
-
-
-@decorators.router_wrapper
-@application.route("/health", methods=["GET"])
-def health():
-    return "mission processed", 200
-
 
 
 @decorators.router_wrapper
@@ -114,6 +104,39 @@ def process_debt_trans():
     return "mission processed", 200
 
 
+def get_summary(df_user_statistics):
+    total_summary = dict()
+    current_month_summary = dict()
+    previouse_month_summary = dict()
+
+
+    today = date.today()
+    curr_month_start = today.replace(day=1)
+    last_month_end = curr_month_start - timedelta(days=1)
+    last_month_start = last_month_end.replace(day=1)
+
+
+
+    users = df_user_statistics["user"].unique()
+    for user in users:
+        user_df = df_user_statistics.loc[df_user_statistics["user"] == user]
+        user_df_last_month = user_df.loc[(user_df['date'] >= last_month_start) & (user_df['date'] <= last_month_end)]
+        user_df_curr_month = user_df.loc[(user_df['date'] >= curr_month_start) & (user_df['date'] <= today)]
+
+        total_summary[user] = user_df["amount"].sum()
+        current_month_summary[user] = user_df_curr_month["amount"].sum()
+        previouse_month_summary[user] = user_df_last_month["amount"].sum()
+
+        if total_summary[user] == 0:
+            del total_summary[user]
+        if current_month_summary[user] == 0:
+            del current_month_summary[user]
+        if previouse_month_summary[user] == 0:
+            del previouse_month_summary[user]
+
+    return total_summary, current_month_summary, previouse_month_summary
+
+
 def get_sheet():
     SHEET_ID = "1gkVUAVPc7NXV1FBe1b9tp-3x8KcvUEr_BLV5n-wdBco"
 
@@ -130,7 +153,7 @@ def get_sheet():
     return python_sheet, sheet
 
 
-def get_all_users(df):
+def get_all_users_from_df(df):
     users = []
     for each_name_combination in (df["who"].unique().tolist() + df["from"].unique().tolist()):
         names = each_name_combination.strip().split(",")
@@ -180,18 +203,6 @@ def process_link(result, path):
     return trans_result
 
 
-def depthFirst(graph, currentVertex, visited, result_list):
-    visited.append(currentVertex)
-    if graph.get(currentVertex) is not None:
-        for vertex in graph[currentVertex]:
-            if vertex not in visited:
-                depthFirst(graph, vertex, visited.copy(), result_list)
-    if len(visited) == len(set(visited)):
-        if len(visited) > 2:
-            result_list.append(visited)
-            return
-
-
 def clean_zero_node(arrangement):
     new_arrangement = arrangement.copy()
     for each in list(new_arrangement.keys()):
@@ -202,7 +213,7 @@ def clean_zero_node(arrangement):
     return new_arrangement
 
 
-def deep_process(arrangement):
+def simple_process(arrangement):
     new_arrangement = arrangement.copy()
     finished_user = []
     for user in list(new_arrangement.keys()):
@@ -224,59 +235,61 @@ def deep_process(arrangement):
     return new_arrangement
 
 
-def recommended_own(current_arrangement):
+def get_transfer_chain(current_arrangement):
+    transfer_chain_list = list()
+    _get_transfer_chain(current_arrangement, current_arrangement, transfer_chain_list, [])
+    return max(transfer_chain_list, key=len)
+
+
+def _get_transfer_chain(segment, current_arrangement, transfer_chain_list, curr_list):
+    for user in segment:
+        if user in curr_list:
+            curr_list.append(user)
+        elif user in current_arrangement:
+            curr_list.append(user)
+            _get_transfer_chain(current_arrangement[user], current_arrangement, transfer_chain_list, curr_list)
+        else:
+            curr_list.append(user)
+            transfer_chain_list.append(curr_list.copy())
+        curr_list.pop()
+
+
+def optimize_transfer(current_arrangement):
     new_arrangement = copy.deepcopy(current_arrangement)
     debt_transfer_procedure = []
     while True:
         new_arrangement = clean_zero_node(new_arrangement)
-        no_process = True
-        for user in list(new_arrangement.keys()):
-            result_total_list = []
-            depthFirst(new_arrangement, user, [], result_total_list)
-            if len(result_total_list) != 0:
-                no_process = no_process and False
-            traversal = None
-            if len(result_total_list) > 0:
-                traversal = result_total_list[0]
-                for each in result_total_list:
-                    if len(each) > len(traversal):
-                        traversal = each
-            if traversal is not None:
-                procedure = process_link(new_arrangement, traversal)
-                if procedure.get("amount") != 0:
-                    debt_transfer_procedure.append(procedure)
-
-
-            # if traversal is None:
-            #     debt_transfer_procedure.append(process_link(new_arrangement, traversal))
-
-            # for traversal in result_total_list:
-            #     any_process = True
-            #     debt_transfer_procedure.append(process_link(new_arrangement, traversal))
-            #     break
-            # if any_process:
-            #     break
-        if no_process:
+        traversal = get_transfer_chain(new_arrangement)
+        if len(traversal) > 2:
+            procedure = process_link(new_arrangement, traversal)
+            if procedure.get("amount") != 0:
+                debt_transfer_procedure.append(procedure)
+        else:
             break
-
-    new_arrangement = deep_process(new_arrangement)
-    new_arrangement = clean_zero_node(new_arrangement)
-
 
     return new_arrangement, debt_transfer_procedure
 
 
-def processor():
-    sheet_content, _ = get_sheet()
+def processor(sheet_content):
+    user_statistics = pd.DataFrame(columns=["date", "user", "amount"])
     df = pd.DataFrame(sheet_content)
+
+    date_column = pd.to_datetime(df["date"], format='%Y-%m-%d %H:%M:%S', errors='coerce')
+    date_column.update(pd.to_datetime(df[date_column.isnull()]["date"], format='%Y-%m-%d', errors='coerce'))
+    df["date"] = date_column.dt.date
 
     df["who"] = df["who"].apply(lambda x: str(x).replace("，", ",").replace("（", "(").replace("）", ")"))
 
-    users = get_all_users(df)
+    users = get_all_users_from_df(df)
 
     result = dict()
 
-    # pay book initialize
+    # initialize the result map
+    #     {
+    #         "user1": {user1, user2, user3},
+    #         "user2": {user1, user2, user3},
+    #         "user3": {user1, user2, user3}
+    #     }
     for user in users:
         result[user] = dict()
         for sub_user in users:
@@ -290,15 +303,21 @@ def processor():
             tax_flag = True if row["tax_flg"] == "y" else False
 
             who = row["who"].strip().split(",")
+            who = [str.strip(i) for i in who]
             split_with_people_num = len(who)
-            row_users = list()
+            raw_who = list()
 
             indicator_sum = 0
             user_percentage = dict()
             for each_user in who:
-                each_user = each_user.strip()
-                name_search = re.search(r"(.*)\(([0-9]+.?[0-9]*)\)", each_user)
+                # we search the format for "hanson(3)"
+                name_search = None
+                if "(" in each_user:
+                    name_search = re.search(r"(.*)\(([0-9]+.?[0-9]*)\)", each_user)
+
                 user_name = each_user
+
+                # partial_indicator / indicator_sum = user percentage
                 partial_indicator = 1
 
                 if name_search is not None:
@@ -312,14 +331,13 @@ def processor():
 
                 user_percentage.update({user_name: partial_indicator})
 
-                if user_name not in row_users and each_user != "":
-                    row_users.append(user_name)
+                if user_name not in raw_who and each_user != "":
+                    raw_who.append(user_name)
 
             if indicator_sum == 0:
                 indicator_sum = split_with_people_num
             person_paid_for_it = row["from"]
-
-            for each_user in row_users:
+            for each_user in raw_who:
                 user_split_indicator = user_percentage.get(each_user)
                 user_split_percentage = user_split_indicator / indicator_sum
 
@@ -327,6 +345,7 @@ def processor():
 
                 if each_user != person_paid_for_it:
                     result[person_paid_for_it][each_user] += price_each_user
+                user_statistics = pd.concat([user_statistics, pd.DataFrame([[row["date"], each_user, price_each_user]], columns=user_statistics.columns)], ignore_index=True)
 
         elif row["type"] == "pay":
             from_who = row["from"]
@@ -354,7 +373,7 @@ def processor():
             real_final_result[user][key] = result[key][user]
 
     # deep process 为了避免你给我转十块我给你转十块的事情发生
-    real_final_result = deep_process(real_final_result)
+    real_final_result = simple_process(real_final_result)
 
     # 去掉0
     real_final_result = clean_zero_node(real_final_result)
@@ -364,7 +383,7 @@ def processor():
         if len(real_final_result[each]) == 0:
             del real_final_result[each]
 
-    return real_final_result
+    return real_final_result, user_statistics
 
 
 if __name__ == '__main__':
