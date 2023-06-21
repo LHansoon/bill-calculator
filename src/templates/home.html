@@ -29,7 +29,7 @@
             width: 50%;
         }
 
-        #major-content-recommended {
+        #major-content-recommended-container {
             width: 50%;
         }
 
@@ -51,50 +51,15 @@
 
 <div id="major-container">
     <div id="major-content">
-        <h2>现在呢就是这么个状况：</h2>
-        {% for key, value in major_content.items() %}
-            <p>
 
-                {{key}}: {
-                {% for sub_key, sub_value in value.items() %}
-                    "{{sub_key}}": {{ sub_value }} <button class="clear_debt_btn" data-from="{{ key }}" data-to="{{ sub_key }}" data-amount="{{ sub_value }}" onclick="clearDebt(this)">还钱</button>
-
-                {% endfor %}
-                }
-
-
-            </p>
-        {% endfor %}
-        <button onClick='window.location.reload();'>Refresh Page</button>
     </div>
 
+    <div id="major-content-recommended-container">
+        <div id="major-content-recommended">
 
-    <div id="major-content-recommended">
-        <h2>但是这样呢，能转钱转的简单点：</h2>
-        {% for key, value in recommended_result.items() %}
-            <p>
-                {% set ns = namespace(sum_value = 0) %}
-                {{key}}: {
-                {% for sub_key, sub_value in value.items() %}
-                    "{{sub_key}}": {{ sub_value }}
-                    {% set ns.sum_value = ns.sum_value + sub_value %}
-                {% endfor %}
-                } sum: {{ ns.sum_value | round(2) }}
-            </p>
-        {% endfor %}
-        <hr>
 
-        {% for procedure in debt_transfer_procedure %}
-            <form class="debt-trans-form">
-                <p>[{{procedure["from"]}}]将[{{procedure["about_who"]}}][{{procedure["amount"]}}]的债务转移给[{{procedure["to"]}}]</p>
-                <input type="text" class="debt-trans-row" name="from" value={{procedure["from"]}}>
-                <input type="text" class="debt-trans-row" name="to" value={{procedure["to"]}}>
-                <input type="text" class="debt-trans-row" name="about_who" value={{procedure["about_who"]}}>
-                <input type="text" class="debt-trans-row" name="amount" value={{procedure["amount"]}}>
-            </form>
-        {% endfor %}
+        </div>
         <button id="debt-trans-submit" onclick="AbortController">就这么办吧！</button>
-
     </div>
 
 </div>
@@ -106,29 +71,26 @@
     <h2>Summary</h2>
     <div class="summary-block">
         <h3>Current month：</h3>
-        {% for key, value in curr_month_summary.items() %}
-            <p>
-                {{key}}: {{ value }}
-            </p>
-        {% endfor %}
+        <span id="summary-current-month-content">
+
+
+        </span>
     </div>
 
     <div class="summary-block">
         <h3>Last month：</h3>
-        {% for key, value in last_month_summary.items() %}
-            <p>
-                {{key}}: {{ value }}
-            </p>
-        {% endfor %}
+        <span id="summary-last-month-content">
+
+
+        </span>
     </div>
 
     <div class="summary-block">
         <h3>Total summary：</h3>
-        {% for key, value in summary.items() %}
-            <p>
-                {{key}}: {{ value }}
-            </p>
-        {% endfor %}
+        <span id="summary-total-content">
+
+
+        </span>
     </div>
 </div>
 
@@ -142,15 +104,12 @@
     <form id="pay-form">
         <label for="from">From:</label><br>
         <select id="from" name="from">
-            {% for user in from_users %}
-                <option value="{{user}}">{{user}}</option>
-            {% endfor %}
+
+
         </select><br>
         <label for="to">To:</label><br>
         <select id="to" name="to">
-            {% for user in to_users %}
-                <option value="{{user}}">{{user}}</option>
-            {% endfor %}
+
         </select><br>
         <label for="amount">Amount:</label><br>
         <input type="text" id="amount" name="amount" value=0><br>
@@ -199,13 +158,15 @@
         let amount = btn.getAttribute("data-amount")
 
         let xhr = new XMLHttpRequest();
-        xhr.open('POST','http://{{host}}:{{port}}/pay')
+        xhr.open('POST','https://4j5pmxdan9.execute-api.us-east-1.amazonaws.com/test-2/pay')
         xhr.setRequestHeader("Content-Type", "application/json");
 
         //send the form data
         xhr.send(JSON.stringify({"from": from, "to": to, "amount": amount}));
         xhr.onreadystatechange = function() {
-            if (xhr.readyState === XMLHttpRequest.DONE) {
+            if(xhr.readyState === 4 && xhr.status === 200) {
+                console.log(xhr.responseText);
+                self.retrieveNewUser(name);
                 alert("Finished, page will be reloaded")
                 window.location.reload();
             }
@@ -217,17 +178,20 @@
         let xhr = new XMLHttpRequest();
         let formData = new FormData(form);
         //open the request
-        xhr.open('POST','http://{{host}}:{{port}}/pay')
+        xhr.open('POST','https://4j5pmxdan9.execute-api.us-east-1.amazonaws.com/test-2/pay')
         xhr.setRequestHeader("Content-Type", "application/json");
 
         //send the form data
         xhr.send(JSON.stringify(Object.fromEntries(formData)));
 
         xhr.onreadystatechange = function() {
-            if (xhr.readyState === XMLHttpRequest.DONE) {
+            if(xhr.readyState === 4 && xhr.status === 200) {
+                console.log(xhr.responseText);
+                self.retrieveNewUser(name);
                 alert("Finished, page will be reloaded")
                 window.location.reload();
             }
+
         }
         //Fail the onsubmit to avoid page refresh.
         return false;
@@ -246,7 +210,7 @@
         let json_data = JSON.stringify(result_json_list)
 
         if (json_data !== "[]"){
-            xhr.open('POST','http://{{host}}:{{port}}/debt-trans')
+            xhr.open('POST','https://4j5pmxdan9.execute-api.us-east-1.amazonaws.com/test-2/debt-trans')
             xhr.setRequestHeader("Content-Type", "application/json");
 
             //send the form data
@@ -254,7 +218,7 @@
             xhr.send(json_data);
 
             xhr.onreadystatechange = function() {
-                if (xhr.readyState === XMLHttpRequest.DONE) {
+                if (xhr.readyState === 4 && xhr.status === 200) {
                     alert("中嘞哥ᕕ( ᐛ )ᕗ, page will be reloaded")
                     window.location.reload();
                 }
@@ -264,6 +228,143 @@
         }
 
     }
+
+    function httpGetAsync(theUrl, callback){
+        let xmlHttp = new XMLHttpRequest();
+
+        xmlHttp.onreadystatechange = function() {
+            if (xmlHttp.readyState === 4 && xmlHttp.status === 200)
+                callback(xmlHttp.responseText);
+        }
+        xmlHttp.open("GET", theUrl, true); // true for asynchronous
+        xmlHttp.setRequestHeader("Content-Type", "application/x-www-form-urlencoded");
+        xmlHttp.send(null);
+    }
+
+    function load_major_content(response){
+        let major_content = document.getElementById("major-content");
+        major_content.innerHTML = "<h2>现在呢就是这么个状况：</h2>";
+        let info = JSON.parse(response);
+        info = JSON.parse(info["body"]);
+
+        let info_major_content = info["major_content"]
+        let content = "";
+        for(let key in info_major_content){
+            content += "<p>";
+            content += `${key} : {`
+            for(let sub_key in info_major_content[key]){
+                content += `"${sub_key}": ${info_major_content[key][sub_key]} <button class="clear_debt_btn" data-from="${key}" data-to="${sub_key}" data-amount="${info_major_content[key][sub_key]}" onclick="clearDebt(this)">还钱</button>`;
+
+            }
+            content += "}</p>";
+        }
+        major_content.innerHTML += content;
+        major_content.innerHTML += "<button onClick='window.location.reload();'>Refresh Page</button>";
+
+        let major_content_recommended = document.getElementById("major-content-recommended");
+        info_recommended_content = info["recommended_result"];
+        content = "";
+
+        for(let key in info_recommended_content){
+            content += "<p>";
+            content += `${key} : {`
+            let sum_value = 0
+            for(let sub_key in info_recommended_content[key]){
+                content += `"${sub_key}": ${info_recommended_content[key][sub_key]}`;
+                sum_value += info_recommended_content[key][sub_key];
+            }
+            sum_value = Math.round(sum_value * 100) / 100
+            content += `} sum: ${sum_value} </p>`;
+        }
+        major_content_recommended.innerHTML += content;
+        major_content_recommended.innerHTML += "<hr>";
+
+        info_debt_transfer_procedure = info["debt_transfer_procedure"];
+        content = "";
+
+         for(let procedure of info_debt_transfer_procedure) {
+
+             let from_user = procedure["from"];
+             let about_user = procedure["about_who"];
+             let amount = procedure["amount"];
+             let to_user = procedure["to"];
+
+             content += `
+                <form class="debt-trans-form">
+                    <p>[${from_user}]将[${about_user}][${amount}]的债务转移给[${to_user}]</p>
+                    <input type="text" class="debt-trans-row" name="from" value="${from_user}">
+                    <input type="text" class="debt-trans-row" name="to" value="${to_user}">
+                    <input type="text" class="debt-trans-row" name="about_who" value="${about_user}">
+                    <input type="text" class="debt-trans-row" name="amount" value=${amount}>
+                </form>
+            `
+         }
+         major_content_recommended.innerHTML += content;
+
+
+
+        let summary_current_month_content = document.getElementById("summary-current-month-content");
+        let info_curr_month_summary = info["curr_month_summary"];
+        content = "";
+        for(let key in info_curr_month_summary) {
+            value = info_curr_month_summary[key];
+            content += `
+                <p>
+                    ${key}: ${value}
+                </p>
+            `
+        }
+        summary_current_month_content.innerHTML = content
+
+
+        let summary_last_month_content = document.getElementById("summary-last-month-content");
+        info_curr_month_summary = info["last_month_summary"];
+        content = "";
+        for(let key in info_curr_month_summary) {
+            value = info_curr_month_summary[key];
+            content += `
+                <p>
+                    ${key}: ${value}
+                </p>
+            `
+        }
+        summary_last_month_content.innerHTML = content
+
+
+
+        let summary_total_content = document.getElementById("summary-total-content");
+        info_total_summary = info["total_summary"];
+        content = "";
+        for(let key in info_total_summary) {
+            value = info_total_summary[key];
+            content += `
+                <p>
+                    ${key}: ${value}
+                </p>
+            `
+        }
+        summary_total_content.innerHTML = content
+
+        let from_form = document.getElementById("from");
+        content = "";
+        from_users = info["from_users"];
+        for(let user of from_users) {
+            content += `<option value="${user}">${user}</option>`
+        }
+        from_form.innerHTML = content
+
+
+        let to_form = document.getElementById("to");
+        content = "";
+        to_users = info["to_users"];
+        for(let user of to_users) {
+            content += `<option value="${user}">${user}</option>`
+        }
+        to_form.innerHTML = content
+    }
+
+    httpGetAsync("https://4j5pmxdan9.execute-api.us-east-1.amazonaws.com/test-2/get-major-content", load_major_content);
+
 
 </script>
 </html>

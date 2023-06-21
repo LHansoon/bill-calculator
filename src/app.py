@@ -1,3 +1,5 @@
+import json
+
 import pandas as pd
 from flask import Flask, render_template, request
 import decorators
@@ -12,6 +14,38 @@ global port
 
 application = Flask(__name__, template_folder="templates")
 logger = application.logger
+
+
+@application.route("/get-major-content", methods=["GET"])
+def start_mission_2():
+    sheet_content, _ = get_sheet()
+    result, user_statistics = processor(sheet_content)
+    recommended_result, debt_transfer_procedure = optimize_transfer(result)
+    summary, curr_month_summary, last_month_summary = get_summary(user_statistics)
+
+    users = list()
+    to_users = list()
+    from_users = list(result.keys())
+
+    for user in result.keys():
+        users.append(user)
+        for sub_user in result[user].keys():
+            users.append(sub_user)
+            to_users.append(sub_user)
+    to_users = list(set(to_users))
+
+    result_dict = {
+        "major_content": result,
+        "recommended_result": recommended_result,
+        "debt_transfer_procedure": debt_transfer_procedure,
+        "curr_month_summary": curr_month_summary,
+        "last_month_summary": last_month_summary,
+        "total_summary": summary,
+        "from_users": from_users,
+        "to_users": to_users
+    }
+
+    return json.dumps(result_dict), 200
 
 
 @application.route("/process-mission", methods=["GET"])
@@ -35,14 +69,6 @@ def start_mission():
 
     global port
     result = render_template("home.html",
-                             major_content=result,
-                             recommended_result=recommended_result,
-                             from_users=from_users,
-                             to_users=to_users,
-                             debt_transfer_procedure=debt_transfer_procedure,
-                             summary=summary,
-                             curr_month_summary=curr_month_summary,
-                             last_month_summary=last_month_summary,
                              host="192.168.2.127",
                              port=port)
     return result, 200

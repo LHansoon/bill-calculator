@@ -17,5 +17,5 @@ zip -g $pack_name home.html
 echo Deleting the venv
 rm -rf venv
 
-aws lambda update-function-code --function-name bill-calculator-major-lambda --zip-file fileb://$pack_name
+aws lambda update-function-code --function-name bill-calculator-pay --zip-file fileb://$pack_name
 rm $pack_name
