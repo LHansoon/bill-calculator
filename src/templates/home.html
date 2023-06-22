@@ -20,7 +20,7 @@
         /*    height: 300px;*/
         /*}*/
 
-        #major-container, #summary-section{
+        #major-container, #summary-section, #event-summary-section {
             display: flex;
             flex-wrap: wrap;
         }
@@ -39,6 +39,10 @@
 
         .summary-block {
             width: 30%;
+        }
+
+        .event-summary-block {
+            width: 20%;
         }
 
         #summary-section h2 {
@@ -130,8 +134,33 @@
             </p>
         {% endfor %}
     </div>
+
+
+
+
+
 </div>
 
+<hr>
+
+<div id="event-summary-section">
+    {% for key, value in event_summary.items() %}
+        {% set ns = namespace(sum_value = 0) %}
+        <div class="event-summary-block">
+            <h3>{{ key }}：</h3>
+            {% for key, value in value.items() %}
+                <p>
+                    {{key}}: {{ value | round(2) }}
+                    {% set ns.sum_value = ns.sum_value + value %}
+                </p>
+            {% endfor %}
+            <p style="font-style: italic">Total: {{ ns.sum_value | round(2) }}</p>
+        </div>
+
+    {% endfor %}
+
+
+</div>
 
 
 <hr>
