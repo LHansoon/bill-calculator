@@ -20,7 +20,7 @@
         /*    height: 300px;*/
         /*}*/
 
-        #major-container, #summary-section{
+        #major-container, #summary-section, #event-summary-section {
             display: flex;
             flex-wrap: wrap;
         }
@@ -41,8 +41,40 @@
             width: 30%;
         }
 
+        .event-summary-block {
+            width: 15%;
+        }
+
         #summary-section h2 {
             width: 100%;
+        }
+
+        {#CSS from: https://www.w3schools.com/howto/howto_js_collapsible.asp#}
+        .collapsible {
+              background-color: #777;
+              color: white;
+              cursor: pointer;
+              padding: 10px;
+              width: 100%;
+              border: none;
+              text-align: left;
+              outline: none;
+              font-size: 15px;
+        }
+
+        .collapsible p {
+            margin: 0;
+        }
+
+        .active, .collapsible:hover {
+            background-color: #555;
+        }
+
+        .content {
+              padding: 0 18px;
+              display: none;
+              overflow: hidden;
+              background-color: #f1f1f1;
         }
 
     </style>
@@ -130,8 +162,42 @@
             </p>
         {% endfor %}
     </div>
+
+
+
+
+
 </div>
 
+<hr>
+
+<div id="event-summary-section">
+
+
+    {% for key, value in event_summary.items() %}
+
+        {% set ns = namespace(sum_value = 0) %}
+        {% for key, value in value.items() %}
+            {% set ns.sum_value = ns.sum_value + value %}
+        {% endfor %}
+
+
+        <div class="event-summary-block">
+            {#collaps from: https://www.w3schools.com/howto/howto_js_collapsible.asp#}
+            <button type="button" class="collapsible">{{ key }} <p style="font-style: italic">Total: {{ ns.sum_value | round(2) }}</p></button>
+            <div class="content">
+                {% for key, value in value.items() %}
+                    <p>
+                        {{key}}: {{ value | round(2) }}
+                    </p>
+                {% endfor %}
+            </div>
+        </div>
+
+    {% endfor %}
+
+
+</div>
 
 
 <hr>
@@ -263,6 +329,22 @@
             alert("已经可以了，已经是最优解了，可以不用再卷了( ʘ̅ι_ʘ̅ )")
         }
 
+    }
+
+
+    {#code from: https://www.w3schools.com/howto/howto_js_collapsible.asp#}
+    let coll = document.getElementsByClassName("collapsible");
+    let i;
+    for (i = 0; i < coll.length; i++) {
+        coll[i].addEventListener("click", function() {
+            this.classList.toggle("active");
+            let content = this.nextElementSibling;
+            if (content.style.display === "block") {
+                content.style.display = "none";
+            } else {
+                content.style.display = "block";
+            }
+        });
     }
 
 </script>
