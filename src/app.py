@@ -245,7 +245,10 @@ def simple_process(arrangement):
 def get_transfer_chain(current_arrangement):
     transfer_chain_list = list()
     _get_transfer_chain(current_arrangement, current_arrangement, transfer_chain_list, [])
-    return max(transfer_chain_list, key=len)
+    if len(transfer_chain_list) > 0:
+        return max(transfer_chain_list, key=len)
+    else:
+        return list()
 
 
 def _get_transfer_chain(segment, current_arrangement, transfer_chain_list, curr_list):
