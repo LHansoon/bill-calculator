@@ -183,6 +183,7 @@ def process_link(result, path):
     next_next = path[i + 2]
     current_to_next = result[current][next]
     next_to_next_next = result[next][next_next]
+
     if current_to_next <= next_to_next_next:
         if result[current].get(next_next) is None:
             result[current][next_next] = 0
@@ -255,7 +256,8 @@ def _get_transfer_chain(segment, current_arrangement, transfer_chain_list, curr_
     for user in segment:
         if user in curr_list:
             curr_list.append(user)
-        elif user in current_arrangement:
+            transfer_chain_list.append(curr_list.copy())
+        elif user in current_arrangement and len(current_arrangement[user]) > 0:
             curr_list.append(user)
             _get_transfer_chain(current_arrangement[user], current_arrangement, transfer_chain_list, curr_list)
         else:
