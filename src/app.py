@@ -14,11 +14,166 @@ application = Flask(__name__, template_folder="templates")
 logger = application.logger
 
 
+def build_transfer_base_on_transfer_order(from_user_arrangement, from_user, to_user, amount):
+    result = list()
+    if to_user in from_user_arrangement:
+        amount -= from_user_arrangement[to_user]
+    while amount != 0:
+        # if len(from_user_arrangement) == 0 or (len(from_user_arrangement) == 1 and to_user in from_user_arrangement):
+        if len(from_user_arrangement) == 0:
+            del from_user_arrangement
+            return result
+
+        if to_user in from_user_arrangement:
+            from_user_arrangement_cpy = copy.deepcopy(from_user_arrangement)
+            del from_user_arrangement_cpy[to_user]
+            min_in_from_user = min(from_user_arrangement_cpy, key=from_user_arrangement_cpy.get)
+        else:
+            min_in_from_user = min(from_user_arrangement, key=from_user_arrangement.get)
+
+        if to_user not in from_user_arrangement:
+            from_user_arrangement[to_user] = 0
+
+        transfer_amount = 0
+        min_value_in_from_user = from_user_arrangement[min_in_from_user]
+        if min_value_in_from_user < amount:
+            amount -= min_value_in_from_user
+            del from_user_arrangement[min_in_from_user]
+
+            from_user_arrangement[to_user] += min_value_in_from_user
+
+            transfer_amount = min_value_in_from_user
+        elif min_value_in_from_user >= amount:
+            from_user_arrangement[min_in_from_user] -= amount
+            from_user_arrangement[to_user] += amount
+
+            if from_user_arrangement[min_in_from_user] == 0:
+                del from_user_arrangement[min_in_from_user]
+            transfer_amount = amount
+            amount = 0
+        procedure = dict()
+        procedure["from"] = min_in_from_user
+        procedure["to"] = to_user
+        procedure["about_who"] = from_user
+        procedure["amount"] = transfer_amount
+        result.append(procedure)
+
+    return result
+
+
+def _routine(arrangements, user_balance, recommended_result):
+    user_balance_cpy = copy.deepcopy(user_balance)
+    for user in user_balance:
+        if user_balance[user] == 0:
+            del user_balance_cpy[user]
+    user_balance = user_balance_cpy
+
+    minimums = dict((k, v) for k, v in user_balance.items() if v < 0)
+    maximums = dict((k, v) for k, v in user_balance.items() if v > 0)
+
+    try:
+        max_minimum = max(minimums)
+        max_maximum = max(maximums)
+    except ValueError:
+        return
+
+    max_minimim_value = round(user_balance[max_minimum], 2)
+    max_maximum_value = round(user_balance[max_maximum], 2)
+
+    summation = max_minimim_value + max_maximum_value
+
+    amount = max_maximum_value
+    if summation > 0:
+        del user_balance[max_minimum]
+        user_balance[max_maximum] += max_minimim_value
+        # procedures.extend(build_transfer_base_on_transfer_order(arrangements[max_minimum], max_minimum, max_maximum, -max_minimim_value))
+        # print(f"{max_minimum} 转给 {max_maximum} {-max_minimim_value}刀")
+
+        amount = -max_minimim_value
+
+    elif summation < 0:
+        del user_balance[max_maximum]
+        user_balance[max_minimum] += max_maximum_value
+        # procedures.extend(build_transfer_base_on_transfer_order(arrangements[max_minimum], max_minimum, max_maximum, max_maximum_value))
+        # print(f"{max_minimum} 转给 {max_maximum} {max_maximum_value}刀")
+    elif summation == 0:
+        del user_balance[max_maximum]
+        del user_balance[max_minimum]
+        # procedures.extend(build_transfer_base_on_transfer_order(arrangements[max_minimum], max_minimum, max_maximum, max_maximum_value))
+        # print(f"{max_minimum} 转给 {max_maximum} {max_maximum_value}刀")
+
+    if max_minimum not in recommended_result:
+        recommended_result[max_minimum] = dict()
+    if max_maximum not in recommended_result[max_minimum]:
+        recommended_result[max_minimum][max_maximum] = dict()
+
+    recommended_result[max_minimum][max_maximum] = amount
+    _routine(arrangements, user_balance, recommended_result)
+
+
+
+def routine(result, sheet_content):
+    result_copy = copy.deepcopy(result)
+    df = pd.DataFrame(sheet_content)
+    df["who"] = df["who"].apply(lambda x: str(x).replace("，", ",").replace("（", "(").replace("）", ")"))
+    users = get_all_users_from_df(df)
+    user_balance = dict()
+    for user in users:
+        user_balance[user] = 0
+
+    for user in result_copy:
+        for sub_user in result_copy[user]:
+            user_balance[user] -= result_copy[user][sub_user]
+            user_balance[sub_user] += result_copy[user][sub_user]
+
+    recommended_result = dict()
+    _routine(result_copy, user_balance, recommended_result)
+
+    return recommended_result
+
+
+def build_adj_procedures(result, recommended_result):
+    procedure_result = list()
+    for user in result:
+        if user not in recommended_result:
+            for sub_user in result[user]:
+                procedure = dict()
+                procedure["from"] = user
+                procedure["to"] = sub_user
+                procedure["amount"] = -result[user][sub_user]
+                procedure_result.append(procedure)
+        else:
+            for sub_user in result[user]:
+                if sub_user not in recommended_result[user]:
+                    procedure = dict()
+                    procedure["from"] = user
+                    procedure["to"] = sub_user
+                    procedure["amount"] = -round(result[user][sub_user], 2)
+                    procedure_result.append(procedure)
+                else:
+                    value_in_result = result[user][sub_user]
+                    value_in_recommended_result = recommended_result[user][sub_user]
+                    adj_value = value_in_recommended_result - value_in_result
+                    if value_in_recommended_result != value_in_result:
+                        procedure = dict()
+                        procedure["from"] = user
+                        procedure["to"] = sub_user
+                        procedure["amount"] = round(adj_value, 2)
+                        procedure_result.append(procedure)
+
+    return procedure_result
+
+
 @application.route("/process-mission", methods=["GET"])
 def start_mission():
     sheet_content, _ = get_sheet()
     result, user_statistics = processor(sheet_content)
-    recommended_result, debt_transfer_procedure = optimize_transfer(result)
+
+    recommended_result = routine(result, sheet_content)
+
+    debt_transfer_procedure = build_adj_procedures(result, recommended_result)
+
+    # recommended_result, debt_transfer_procedure = optimize_transfer(result)
 
     summary, curr_month_summary, last_month_summary, event_summary = get_summary(user_statistics)
 
@@ -69,16 +224,15 @@ def process_pay():
 
 
 @decorators.router_wrapper
-@application.route("/debt-trans", methods=["POST"])
-def process_debt_trans():
+@application.route("/adjustment", methods=["POST"])
+def process_debt_adjust():
     json_request = request.json
 
     result = list()
     for each in json_request:
         from_who = each.get("from")
         to_who = each.get("to")
-        about_who = each.get("about_who")
-        amount = each.get("amount")
+        amount = each.get("adj_amount")
 
         # construct row
         time_now = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
@@ -86,10 +240,10 @@ def process_debt_trans():
         sub_result["date"] = time_now
         sub_result["from"] = from_who
         sub_result["to"] = to_who
-        sub_result["product"] = "债务转移"
-        sub_result["who"] = about_who
+        sub_result["product"] = "债务调整"
+        sub_result["who"] = ""
         sub_result["price"] = amount
-        sub_result["type"] = "debt_trans"
+        sub_result["type"] = "debt_adj"
         result.append(sub_result)
 
     sheet_content, sheet = get_sheet()
@@ -373,6 +527,11 @@ def processor(sheet_content):
             result[to_who][from_who] -= how_much
             result[to_who][about_who] += how_much
             result[from_who][about_who] -= how_much
+        elif row["type"] == "debt_adj":
+            from_who = row["from"]
+            to_who = row["to"]
+            how_much = row["price"]
+            result[to_who][from_who] += how_much
 
     # 最后把它变成谁给谁转钱
     real_final_result = dict()
