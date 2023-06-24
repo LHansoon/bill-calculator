@@ -323,7 +323,11 @@ def deep_process(arrangement):
 def get_transfer_chain(current_arrangement):
     transfer_chain_list = list()
     _get_transfer_chain(current_arrangement, current_arrangement, transfer_chain_list, [])
-    return max(transfer_chain_list, key=len)
+    if len(transfer_chain_list) > 0:
+        result = max(transfer_chain_list, key=len)
+    else:
+        result = []
+    return result
 
 
 def _get_transfer_chain(segment, current_arrangement, transfer_chain_list, curr_list):
@@ -331,7 +335,7 @@ def _get_transfer_chain(segment, current_arrangement, transfer_chain_list, curr_
         if user in curr_list:
             curr_list.append(user)
             transfer_chain_list.append(curr_list.copy())
-        elif user in current_arrangement:
+        elif user in current_arrangement and current_arrangement.get(user) != {}:
             curr_list.append(user)
             _get_transfer_chain(current_arrangement[user], current_arrangement, transfer_chain_list, curr_list)
         else:
