@@ -102,12 +102,13 @@ def _routine(arrangements, user_balance, recommended_result):
         # procedures.extend(build_transfer_base_on_transfer_order(arrangements[max_minimum], max_minimum, max_maximum, max_maximum_value))
         # print(f"{max_minimum} 转给 {max_maximum} {max_maximum_value}刀")
 
-    if max_minimum not in recommended_result:
-        recommended_result[max_minimum] = dict()
-    if max_maximum not in recommended_result[max_minimum]:
-        recommended_result[max_minimum][max_maximum] = dict()
+    if amount != 0:
+        if max_minimum not in recommended_result:
+            recommended_result[max_minimum] = dict()
+        if max_maximum not in recommended_result[max_minimum]:
+            recommended_result[max_minimum][max_maximum] = dict()
 
-    recommended_result[max_minimum][max_maximum] = amount
+        recommended_result[max_minimum][max_maximum] = amount
     _routine(arrangements, user_balance, recommended_result)
 
 
@@ -132,34 +133,57 @@ def routine(result, sheet_content):
     return recommended_result
 
 
+def unique_dict_key(listA, listB):
+    result_list = list(listA.keys())
+    result_list.extend(list(listB.keys()))
+    result_list = list(set(result_list))
+    return result_list
+
+
 def build_adj_procedures(result, recommended_result):
     procedure_result = list()
-    for user in result:
-        if user not in recommended_result:
+
+    user_list = unique_dict_key(result, recommended_result)
+
+    for user in user_list:
+        if user in recommended_result and user in result:
+            sub_user_list = unique_dict_key(result[user], recommended_result[user])
+            for sub_user in sub_user_list:
+                if sub_user in recommended_result[user] and sub_user in result[user]:
+                    procedure = dict()
+                    procedure["from"] = user
+                    procedure["to"] = sub_user
+                    procedure["amount"] = round(recommended_result[user][sub_user] - result[user][sub_user], 2)
+                    if procedure["amount"] != 0:
+                        procedure_result.append(procedure)
+                elif sub_user in recommended_result[user]:
+                    procedure = dict()
+                    procedure["from"] = user
+                    procedure["to"] = sub_user
+                    procedure["amount"] = round(recommended_result[user][sub_user], 2)
+                    if procedure["amount"] != 0:
+                        procedure_result.append(procedure)
+                else:
+                    procedure = dict()
+                    procedure["from"] = user
+                    procedure["to"] = sub_user
+                    procedure["amount"] = round(-result[user][sub_user], 2)
+                    if procedure["amount"] != 0:
+                        procedure_result.append(procedure)
+        elif user in recommended_result:
+            for sub_user in recommended_result[user]:
+                procedure = dict()
+                procedure["from"] = user
+                procedure["to"] = sub_user
+                procedure["amount"] = round(recommended_result[user][sub_user], 2)
+                procedure_result.append(procedure)
+        else:
             for sub_user in result[user]:
                 procedure = dict()
                 procedure["from"] = user
                 procedure["to"] = sub_user
-                procedure["amount"] = -result[user][sub_user]
+                procedure["amount"] = round(-result[user][sub_user], 2)
                 procedure_result.append(procedure)
-        else:
-            for sub_user in result[user]:
-                if sub_user not in recommended_result[user]:
-                    procedure = dict()
-                    procedure["from"] = user
-                    procedure["to"] = sub_user
-                    procedure["amount"] = -round(result[user][sub_user], 2)
-                    procedure_result.append(procedure)
-                else:
-                    value_in_result = result[user][sub_user]
-                    value_in_recommended_result = recommended_result[user][sub_user]
-                    adj_value = value_in_recommended_result - value_in_result
-                    if value_in_recommended_result != value_in_result:
-                        procedure = dict()
-                        procedure["from"] = user
-                        procedure["to"] = sub_user
-                        procedure["amount"] = round(adj_value, 2)
-                        procedure_result.append(procedure)
 
     return procedure_result
 
@@ -172,8 +196,6 @@ def start_mission():
     recommended_result = routine(result, sheet_content)
 
     debt_transfer_procedure = build_adj_procedures(result, recommended_result)
-
-    # recommended_result, debt_transfer_procedure = optimize_transfer(result)
 
     summary, curr_month_summary, last_month_summary, event_summary = get_summary(user_statistics)
 
