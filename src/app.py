@@ -488,7 +488,11 @@ def processor(sheet_content):
         row = row[1]
 
         if row["type"] == "buy":
-            tax_flag = True if row["tax_flg"] == "y" else False
+            tax_flag = row["tax_flg"]
+            if tax_flag == "y":
+                tax_flag = 0.15
+            elif tax_flag == "":
+                tax_flag = -1
 
             who = row["who"].strip().split(",")
             who = [str.strip(i) for i in who]
@@ -529,7 +533,7 @@ def processor(sheet_content):
                 user_split_indicator = user_percentage.get(each_user)
                 user_split_percentage = user_split_indicator / indicator_sum
 
-                price_each_user = row["price"] * user_split_percentage if not tax_flag else row["price"] * 1.15 * user_split_percentage
+                price_each_user = row["price"] * user_split_percentage if (tax_flag == -1) else row["price"] * (1 + tax_flag) * user_split_percentage
 
                 if each_user != person_paid_for_it:
                     result[person_paid_for_it][each_user] += price_each_user
