@@ -311,7 +311,8 @@ def get_summary(df_user_statistics):
 
         user_tags = user_df["event_tag"].unique().tolist()
         user_tags = [str.strip(i) for i in user_tags]
-        user_tags.remove("")
+        if "" in user_tags:
+            user_tags.remove("")
         for tag in user_tags:
             if tag not in event_summary:
                 event_summary[tag] = dict()
