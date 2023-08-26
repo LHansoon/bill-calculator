@@ -1,6 +1,12 @@
 name: Build
 
 on:
+    workflow_dispatch:
+        inputs:
+            environment:
+                description: 'Environment to run tests against'
+                type: environment
+                required: false
     push:
         tags:
             - 'v*' # Push events to matching v*, i.e. v1.0, v20.15.10
