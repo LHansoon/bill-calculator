@@ -1,3 +1,4 @@
+import json
 import pandas as pd
 from flask import Flask, render_template, request
 import decorators
@@ -8,7 +9,7 @@ import gspread
 import copy
 from oauth2client.service_account import ServiceAccountCredentials
 
-global port
+global config
 
 application = Flask(__name__, template_folder="templates")
 logger = application.logger
@@ -188,7 +189,7 @@ def build_adj_procedures(result, recommended_result):
     return procedure_result
 
 
-@application.route("/process-mission", methods=["GET"])
+@application.route("/", methods=["GET"])
 def start_mission():
     sheet_content, _ = get_sheet()
     result, user_statistics = processor(sheet_content)
@@ -210,7 +211,7 @@ def start_mission():
             to_users.append(sub_user)
     to_users = list(set(to_users))
 
-    global port
+    global config
     result = render_template("home.html",
                              major_content=result,
                              recommended_result=recommended_result,
@@ -221,14 +222,17 @@ def start_mission():
                              curr_month_summary=curr_month_summary,
                              last_month_summary=last_month_summary,
                              event_summary=event_summary,
-                             host="192.168.2.127",
-                             port=port)
+                             sheet_id=config.get("sheet_id"),
+                             host=f"{request.remote_addr}",
+                             port=config.get("port"))
     return result, 200
 
 
 @decorators.router_wrapper
 @application.route("/pay", methods=["POST"])
 def process_pay():
+    global config
+
     json_request = request.json
 
     from_who = json_request.get("from")
@@ -237,7 +241,7 @@ def process_pay():
 
     time_now = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
     # date, from, to, product, price, tax_flg, who, type
-    result = [time_now, from_who, to_who, "进行一个钱的还💰", amount, None, None, "pay"]
+    result = [time_now, from_who, to_who, config.get("money_return_msg"), amount, None, None, "pay"]
 
     sheet_content, sheet = get_sheet()
     sheet.append_row(result, table_range="A1:H1")
@@ -322,13 +326,14 @@ def get_summary(df_user_statistics):
 
 
 def get_sheet():
-    SHEET_ID = "1gkVUAVPc7NXV1FBe1b9tp-3x8KcvUEr_BLV5n-wdBco"
+    global config
+    SHEET_ID = config.get("sheet_id")
 
     scope = [
         'https://www.googleapis.com/auth/drive',
         'https://www.googleapis.com/auth/drive.file'
     ]
-    file_name = 'credentials.json'
+    file_name = config.get("cred_path")
     creds = ServiceAccountCredentials.from_json_keyfile_name(file_name, scope)
     client = gspread.authorize(creds)
 
@@ -460,6 +465,7 @@ def optimize_transfer(current_arrangement):
 
 
 def processor(sheet_content):
+    global config
     user_statistics = pd.DataFrame(columns=["date", "user", "amount", "event_tag"])
     df = pd.DataFrame(sheet_content)
 
@@ -491,7 +497,7 @@ def processor(sheet_content):
         if row["type"] == "buy":
             tax_flag = row["tax_flg"]
             if tax_flag == "y":
-                tax_flag = 0.15
+                tax_flag = config.get("tax_rate")
             elif tax_flag == "":
                 tax_flag = -1
 
@@ -585,11 +591,8 @@ def processor(sheet_content):
 
 
 if __name__ == '__main__':
-    global port
-
+    global config
     args = sys.argv
-    port = 8000
-    if len(args) != 1:
-        port = int(args[1])
+    config = json.loads(open("config.json").read())
 
-    application.run(host="0.0.0.0", port=port, debug=True)
+    application.run(host="0.0.0.0", port=config.get("port"), debug=True)
