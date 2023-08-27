@@ -593,6 +593,6 @@ def processor(sheet_content):
 if __name__ == '__main__':
     global config
     args = sys.argv
-    config = json.loads(open("config.json").read())
+    config = json.loads(open("config.json", encoding="utf-8").read())
 
     application.run(host="0.0.0.0", port=config.get("port"), debug=True)
