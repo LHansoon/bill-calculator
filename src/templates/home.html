@@ -77,6 +77,10 @@
               background-color: #f1f1f1;
         }
 
+        .debug {
+            display: none;
+        }
+
     </style>
 </head>
 <body>
@@ -84,7 +88,7 @@
 <div id="major-container">
     <div id="major-content">
         <h2>现在呢就是这么个状况：</h2>
-        {% for key, value in major_content.items() %}
+        {% for key, value in recommended_result.items() %}
             <p>
 
                 {{key}}: {
@@ -100,32 +104,46 @@
         <button onClick='window.location.reload();'>Refresh Page</button>
     </div>
 
+    <div class="debug">
+        <div id="major-content">
+            <h2>现在呢就是这么个状况：</h2>
+            {% for key, value in major_content.items() %}
+                <p>
+                    {{key}}: {
+                    {% for sub_key, sub_value in value.items() %}
+                        "{{sub_key}}": {{ sub_value }}
+                    {% endfor %}
+                    }
+                </p>
+            {% endfor %}
+            <button onClick='window.location.reload();'>Refresh Page</button>
+        </div>
+        <div>
+            <h2>但是这样呢，能转钱转的简单点：</h2>
+            {% for key, value in recommended_result.items() %}
+                <p>
+                    {% set ns = namespace(sum_value = 0) %}
+                    {{key}}: {
+                    {% for sub_key, sub_value in value.items() %}
+                        "{{sub_key}}": {{ sub_value }}
+                        {% set ns.sum_value = ns.sum_value + sub_value %}
+                    {% endfor %}
+                    } sum: {{ ns.sum_value | round(2) }}
+                </p>
+            {% endfor %}
+            <hr>
 
-    <div id="major-content-recommended">
-        <h2>但是这样呢，能转钱转的简单点：</h2>
-        {% for key, value in recommended_result.items() %}
-            <p>
-                {% set ns = namespace(sum_value = 0) %}
-                {{key}}: {
-                {% for sub_key, sub_value in value.items() %}
-                    "{{sub_key}}": {{ sub_value }}
-                    {% set ns.sum_value = ns.sum_value + sub_value %}
-                {% endfor %}
-                } sum: {{ ns.sum_value | round(2) }}
-            </p>
-        {% endfor %}
-        <hr>
+            {% for procedure in debt_transfer_procedure %}
+                <form class="debt-trans-form">
+                    <p>[{{procedure["from"]}}] to [{{procedure["to"]}}] adjust [{{procedure["amount"]}}]</p>
+                    <input type="text" class="debt-trans-row" name="from" value={{procedure["from"]}}>
+                    <input type="text" class="debt-trans-row" name="to" value={{procedure["to"]}}>
+                    <input type="text" class="debt-trans-row" name="adj_amount" value={{procedure["amount"]}}>
+                </form>
+            {% endfor %}
+            <button id="debt-trans-submit" onclick="AbortController">上了！</button>
 
-        {% for procedure in debt_transfer_procedure %}
-            <form class="debt-trans-form">
-                <p>[{{procedure["from"]}}] to [{{procedure["to"]}}] adjust [{{procedure["amount"]}}]</p>
-                <input type="text" class="debt-trans-row" name="from" value={{procedure["from"]}}>
-                <input type="text" class="debt-trans-row" name="to" value={{procedure["to"]}}>
-                <input type="text" class="debt-trans-row" name="adj_amount" value={{procedure["amount"]}}>
-            </form>
-        {% endfor %}
-        <button id="debt-trans-submit" onclick="AbortController">上了！</button>
-
+        </div>
     </div>
 
 </div>
@@ -133,8 +151,8 @@
 
 <hr>
 
-<div id="summary-section">
-    <h2>Summary</h2>
+<h2 class="collapsible">Summary</h2>
+<div id="summary-section" style="display: none">
     <div class="summary-block">
         <h3>Current month：</h3>
         {% for key, value in curr_month_summary.items() %}
@@ -162,17 +180,11 @@
         {% endfor %}
     </div>
 
-
-
-
-
 </div>
 
 <hr>
 
 <div id="event-summary-section">
-
-
     {% for key, value in event_summary.items() %}
 
         {% set ns = namespace(sum_value = 0) %}
@@ -298,38 +310,6 @@
         return false;
     }
 
-    let debt_trans_btn = document.getElementById("debt-trans-submit")
-    debt_trans_btn.onclick = function (event) {
-        let debt_trans_forms = document.getElementsByClassName("debt-trans-form")
-
-        let result_json_list = []
-        for (var i = 0; i < debt_trans_forms.length; i++){
-            result_json_list.push(objectifyForm(debt_trans_forms[i]))
-        }
-        let xhr = new XMLHttpRequest();
-
-        let json_data = JSON.stringify(result_json_list)
-
-        if (json_data !== "[]"){
-            xhr.open('POST','http://{{host}}:{{port}}/adjustment')
-            xhr.setRequestHeader("Content-Type", "application/json");
-
-            //send the form data
-
-            xhr.send(json_data);
-
-            xhr.onreadystatechange = function() {
-                if (xhr.readyState === XMLHttpRequest.DONE) {
-                    alert("中嘞哥ᕕ( ᐛ )ᕗ, page will be reloaded")
-                    window.location.reload();
-                }
-            }
-        } else {
-            alert("已经可以了，已经是最优解了，可以不用再卷了( ʘ̅ι_ʘ̅ )")
-        }
-
-    }
-
 
     {#code from: https://www.w3schools.com/howto/howto_js_collapsible.asp#}
     let coll = document.getElementsByClassName("collapsible");
@@ -338,11 +318,20 @@
         coll[i].addEventListener("click", function() {
             this.classList.toggle("active");
             let content = this.nextElementSibling;
-            if (content.style.display === "block") {
-                content.style.display = "none";
+            if (content.id === "summary-section") {
+                if (content.style.display === "flex") {
+                    content.style.display = "none";
+                } else {
+                    content.style.display = "flex";
+                }
             } else {
-                content.style.display = "block";
-            }
+
+                if (content.style.display === "block") {
+                    content.style.display = "none";
+                } else {
+                    content.style.display = "block";
+                }
+             }
         });
     }
 
