@@ -73,8 +73,8 @@ def _routine(arrangements, user_balance, recommended_result):
     maximums = dict((k, v) for k, v in user_balance.items() if v > 0)
 
     try:
-        max_minimum = max(minimums)
-        max_maximum = max(maximums)
+        max_minimum = max(minimums, key=minimums.get)
+        max_maximum = max(maximums, key=maximums.get)
     except ValueError:
         return
 
