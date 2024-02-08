@@ -72,8 +72,9 @@ jobs:
               shell: bash
               run: |
                   ls
-                  echo hello
-                  ls ..
+                  echo "hello"
+                  ls release_url
+
                   value=`cat release_url/release_url.txt`
                   echo ::set-output name=upload_url::$value
             - name: Upload Release Asset
