@@ -276,7 +276,8 @@
         let amount = btn.getAttribute("data-amount")
 
         let xhr = new XMLHttpRequest();
-        xhr.open('POST','http://{{host}}:{{port}}/pay')
+        let url = window.location.protocol + '//' + window.location.host;
+        xhr.open('POST','{{ url }}/pay')
         xhr.setRequestHeader("Content-Type", "application/json");
 
         //send the form data
@@ -293,8 +294,10 @@
     form.onsubmit = function(event){
         let xhr = new XMLHttpRequest();
         let formData = new FormData(form);
-        //open the request
-        xhr.open('POST','http://{{host}}:{{port}}/pay')
+
+        let url = window.location.protocol + '//' + window.location.host;
+        xhr.open('POST','{{ url }}/pay')
+
         xhr.setRequestHeader("Content-Type", "application/json");
 
         //send the form data
