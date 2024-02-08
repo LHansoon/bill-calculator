@@ -71,6 +71,7 @@ jobs:
               id: get_release_info
               shell: bash
               run: |
+                  ls dist
                   value=`cat ../release_url/release_url.txt`
                   echo ::set-output name=upload_url::$value
             - name: Upload Release Asset
@@ -80,6 +81,6 @@ jobs:
                   GITHUB_TOKEN: ${{ secrets.GHA }}
               with:
                   upload_url: ${{ steps.get_release_info.outputs.upload_url }}
-                  asset_path: ./dist/${{ matrix.OUT_FILE_NAME}}
+                  asset_path: dist/${{ matrix.OUT_FILE_NAME}}
                   asset_name: ${{ matrix.OUT_FILE_NAME}}
                   asset_content_type: ${{ matrix.ASSET_MIME}}
