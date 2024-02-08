@@ -3,14 +3,9 @@ name: Build
 on:
     workflow_dispatch:
         inputs:
-            environment:
-                description: 'Environment to run tests against'
-                type: environment
-                required: false
-    push:
-        tags:
-            - 'v*' # Push events to matching v*, i.e. v1.0, v20.15.10
-
+            version_tag:
+                description: 'version tag'
+                required: true
 jobs:
     createrelease:
         name: Create Release
@@ -22,8 +17,8 @@ jobs:
           env:
             GITHUB_TOKEN: ${{ secrets.GHA }}
           with:
-            tag_name: ${{ github.ref }}
-            release_name: Release ${{ github.ref }}
+            tag_name: ${{ github.event.inputs.version_tag }}
+            release_name: Release ${{ github.event.inputs.version_tag }}
             draft: false
             prerelease: false
         - name: Output Release URL File
