@@ -78,19 +78,19 @@ def _routine(arrangements, user_balance, recommended_result):
     except ValueError:
         return
 
-    max_minimim_value = round(user_balance[max_minimum], 2)
+    max_minimum_value = round(user_balance[max_minimum], 2)
     max_maximum_value = round(user_balance[max_maximum], 2)
 
-    summation = max_minimim_value + max_maximum_value
+    summation = max_minimum_value + max_maximum_value
 
     amount = max_maximum_value
     if summation > 0:
         del user_balance[max_minimum]
-        user_balance[max_maximum] += max_minimim_value
+        user_balance[max_maximum] += max_minimum_value
         # procedures.extend(build_transfer_base_on_transfer_order(arrangements[max_minimum], max_minimum, max_maximum, -max_minimim_value))
         # print(f"{max_minimum} 转给 {max_maximum} {-max_minimim_value}刀")
 
-        amount = -max_minimim_value
+        amount = -max_minimum_value
 
     elif summation < 0:
         del user_balance[max_maximum]
@@ -127,6 +127,10 @@ def routine(result, sheet_content):
         for sub_user in result_copy[user]:
             user_balance[user] -= result_copy[user][sub_user]
             user_balance[sub_user] += result_copy[user][sub_user]
+
+    # round the user balance to 2 decimal places
+    for sub_user in user_balance:
+        user_balance[sub_user] = round(user_balance[sub_user], 2)
 
     recommended_result = dict()
     _routine(result_copy, user_balance, recommended_result)
