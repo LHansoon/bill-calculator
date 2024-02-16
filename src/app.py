@@ -3,6 +3,7 @@ import pandas as pd
 from flask import Flask, render_template, request
 import decorators
 from datetime import datetime, date, timedelta
+from threading import RLock
 import sys
 import re
 import gspread
@@ -12,6 +13,9 @@ from oauth2client.service_account import ServiceAccountCredentials
 app = Flask(__name__, template_folder="templates")
 logger = app.logger
 
+global last_update_ts
+global sheet_cache
+lock = RLock()
 
 def build_transfer_base_on_transfer_order(from_user_arrangement, from_user, to_user, amount):
     result = list()
@@ -199,7 +203,7 @@ def process_mission():
 @app.route("/", methods=["GET"])
 def start_mission():
     sheet = get_sheet()
-    sheet_content = sheet.get_all_records()
+    sheet_content = get_sheet_content(sheet)
 
     result, user_statistics = processor(sheet_content)
 
@@ -279,7 +283,7 @@ def process_debt_adjust():
         result.append(sub_result)
 
     sheet = get_sheet()
-    sheet_content = sheet.get_all_records()
+    sheet_content = get_sheet_content(sheet)
     df = pd.DataFrame(sheet_content)
     df = pd.concat([df, pd.DataFrame(result, columns=df.columns)])
     df.reset_index()
@@ -345,6 +349,22 @@ def get_sheet():
 
     sheet = client.open_by_key(SHEET_ID).sheet1
     return sheet
+
+
+def get_sheet_content(sheet):
+    global last_update_ts
+    global sheet_cache
+    local_last_update_ts = sheet.spreadsheet.lastUpdateTime
+    with lock:
+        try:
+            last_update_ts
+        except:
+            last_update_ts = local_last_update_ts
+            sheet_cache = sheet.get_all_records()
+        if last_update_ts != local_last_update_ts:
+            last_update_ts = local_last_update_ts
+            sheet_cache = sheet.get_all_records()
+    return sheet_cache.copy()
 
 
 def get_all_users_from_df(df):
