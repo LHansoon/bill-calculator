@@ -1,4 +1,6 @@
 import json
+import logging
+
 import pandas as pd
 from flask import Flask, render_template, request
 import decorators
@@ -490,7 +492,11 @@ def optimize_transfer(current_arrangement):
 
 
 def processor(sheet_content):
-    user_statistics = pd.DataFrame(columns=["date", "user", "amount", "event_tag"])
+    stat_columns = ["date", "user", "amount", "event_tag"]
+    user_stat = dict()
+    for column in stat_columns:
+        user_stat[column] = list()
+
     df = pd.DataFrame(sheet_content)
 
     date_column = pd.to_datetime(df["date"], format='%Y-%m-%d %H:%M:%S', errors='coerce')
@@ -568,7 +574,12 @@ def processor(sheet_content):
 
                 if each_user != person_paid_for_it:
                     result[person_paid_for_it][each_user] += price_each_user
-                user_statistics = pd.concat([user_statistics, pd.DataFrame([[row["date"], each_user, price_each_user, row["tag"]]], columns=user_statistics.columns)], ignore_index=True)
+
+                user_stat["date"].append(row["date"])
+                user_stat["user"].append(each_user)
+                user_stat["amount"].append(price_each_user)
+                user_stat["event_tag"].append(row["tag"])
+
 
         elif row["type"] == "pay":
             from_who = row["from"]
@@ -611,7 +622,9 @@ def processor(sheet_content):
         if len(real_final_result[each]) == 0:
             del real_final_result[each]
 
-    return real_final_result, user_statistics
+    stat_df = pd.DataFrame.from_dict(user_stat)
+
+    return real_final_result, stat_df
 
 
 if __name__ == '__main__':
