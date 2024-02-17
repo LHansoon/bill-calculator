@@ -4,12 +4,11 @@ import logging
 import pandas as pd
 from flask import Flask, render_template, request
 import decorators
-from datetime import datetime, date, timedelta
+import time
+from datetime import datetime
 from threading import RLock
 import sys
-import re
 import gspread
-import copy
 from oauth2client.service_account import ServiceAccountCredentials
 
 from Processor import Processor
@@ -23,134 +22,11 @@ global sheet_cache
 lock = RLock()
 
 
-def _routine(arrangements, user_balance, recommended_result):
-    user_balance_cpy = copy.deepcopy(user_balance)
-    for user in user_balance:
-        if user_balance[user] == 0:
-            del user_balance_cpy[user]
-    user_balance = user_balance_cpy
-
-    minimums = dict((k, v) for k, v in user_balance.items() if v < 0)
-    maximums = dict((k, v) for k, v in user_balance.items() if v > 0)
-
-    try:
-        max_minimum = max(minimums, key=minimums.get)
-        max_maximum = max(maximums, key=maximums.get)
-    except ValueError:
-        return
-
-    max_minimum_value = round(user_balance[max_minimum], 2)
-    max_maximum_value = round(user_balance[max_maximum], 2)
-
-    summation = max_minimum_value + max_maximum_value
-
-    amount = max_maximum_value
-    if summation > 0:
-        del user_balance[max_minimum]
-        user_balance[max_maximum] += max_minimum_value
-        # procedures.extend(build_transfer_base_on_transfer_order(arrangements[max_minimum], max_minimum, max_maximum, -max_minimim_value))
-        # print(f"{max_minimum} 转给 {max_maximum} {-max_minimim_value}刀")
-
-        amount = -max_minimum_value
-
-    elif summation < 0:
-        del user_balance[max_maximum]
-        user_balance[max_minimum] += max_maximum_value
-        # procedures.extend(build_transfer_base_on_transfer_order(arrangements[max_minimum], max_minimum, max_maximum, max_maximum_value))
-        # print(f"{max_minimum} 转给 {max_maximum} {max_maximum_value}刀")
-    elif summation == 0:
-        del user_balance[max_maximum]
-        del user_balance[max_minimum]
-        # procedures.extend(build_transfer_base_on_transfer_order(arrangements[max_minimum], max_minimum, max_maximum, max_maximum_value))
-        # print(f"{max_minimum} 转给 {max_maximum} {max_maximum_value}刀")
-
-    if amount != 0:
-        if max_minimum not in recommended_result:
-            recommended_result[max_minimum] = dict()
-        if max_maximum not in recommended_result[max_minimum]:
-            recommended_result[max_minimum][max_maximum] = dict()
-
-        recommended_result[max_minimum][max_maximum] = amount
-    _routine(arrangements, user_balance, recommended_result)
-
-
-def routine(result, sheet_content):
-    result_copy = copy.deepcopy(result)
-    df = pd.DataFrame(sheet_content)
-    df["who"] = df["who"].apply(lambda x: str(x).replace("，", ",").replace("（", "(").replace("）", ")"))
-    users = get_all_users_from_df(df)
-    user_balance = dict()
-    for user in users:
-        user_balance[user] = 0
-
-    for user in result_copy:
-        for sub_user in result_copy[user]:
-            user_balance[user] -= result_copy[user][sub_user]
-            user_balance[sub_user] += result_copy[user][sub_user]
-
-    # round the user balance to 2 decimal places
-    for sub_user in user_balance:
-        user_balance[sub_user] = round(user_balance[sub_user], 2)
-
-    recommended_result = dict()
-    _routine(result_copy, user_balance, recommended_result)
-
-    return recommended_result
-
-
 def unique_dict_key(listA, listB):
     result_list = list(listA.keys())
     result_list.extend(list(listB.keys()))
     result_list = list(set(result_list))
     return result_list
-
-
-def build_adj_procedures(result, recommended_result):
-    procedure_result = list()
-
-    user_list = unique_dict_key(result, recommended_result)
-
-    for user in user_list:
-        if user in recommended_result and user in result:
-            sub_user_list = unique_dict_key(result[user], recommended_result[user])
-            for sub_user in sub_user_list:
-                if sub_user in recommended_result[user] and sub_user in result[user]:
-                    procedure = dict()
-                    procedure["from"] = user
-                    procedure["to"] = sub_user
-                    procedure["amount"] = round(recommended_result[user][sub_user] - result[user][sub_user], 2)
-                    if procedure["amount"] != 0:
-                        procedure_result.append(procedure)
-                elif sub_user in recommended_result[user]:
-                    procedure = dict()
-                    procedure["from"] = user
-                    procedure["to"] = sub_user
-                    procedure["amount"] = round(recommended_result[user][sub_user], 2)
-                    if procedure["amount"] != 0:
-                        procedure_result.append(procedure)
-                else:
-                    procedure = dict()
-                    procedure["from"] = user
-                    procedure["to"] = sub_user
-                    procedure["amount"] = round(-result[user][sub_user], 2)
-                    if procedure["amount"] != 0:
-                        procedure_result.append(procedure)
-        elif user in recommended_result:
-            for sub_user in recommended_result[user]:
-                procedure = dict()
-                procedure["from"] = user
-                procedure["to"] = sub_user
-                procedure["amount"] = round(recommended_result[user][sub_user], 2)
-                procedure_result.append(procedure)
-        else:
-            for sub_user in result[user]:
-                procedure = dict()
-                procedure["from"] = user
-                procedure["to"] = sub_user
-                procedure["amount"] = round(-result[user][sub_user], 2)
-                procedure_result.append(procedure)
-
-    return procedure_result
 
 
 @app.route("/process", methods=["GET"])
@@ -161,18 +37,30 @@ def process_mission():
 @app.route("/", methods=["GET"])
 def start_mission():
     sheet = get_sheet()
-    sheet_content_raw = get_sheet_content(sheet)
+    sheet_raw_content = get_sheet_content(sheet)
 
-    sheet_content = Content(sheet_content_raw)
-    processor = Processor()
+    sheet_content = Content(sheet_raw_content)
+    processor = Processor(sheet_content)
 
-    result, user_statistics = processor.process(sheet_content)
+    st = time.time()
+    result = processor.process()
+    et = time.time()
 
-    recommended_result = routine(result, sheet_content_raw)
+    time_pass = et - st
+    app.logger.debug(time_pass)
 
-    debt_transfer_procedure = build_adj_procedures(result, recommended_result)
+    st = time.time()
+    recommended_result = processor.get_optimized()
+    et = time.time()
 
-    summary, curr_month_summary, last_month_summary, event_summary = get_summary(user_statistics)
+    time_pass = et - st
+    app.logger.debug(time_pass)
+
+    summary, curr_month_summary, last_month_summary, event_summary = processor.get_summary()
+    et = time.time()
+
+    time_pass = et - st
+    app.logger.debug(time_pass)
 
     users = list()
     to_users = list()
@@ -190,7 +78,6 @@ def start_mission():
                              recommended_result=recommended_result,
                              from_users=from_users,
                              to_users=to_users,
-                             debt_transfer_procedure=debt_transfer_procedure,
                              summary=summary,
                              curr_month_summary=curr_month_summary,
                              last_month_summary=last_month_summary,
@@ -251,50 +138,10 @@ def process_debt_adjust():
     df = df.where(pd.notnull(df), None)
 
     value_list = df.values.tolist()
-    final_result = [df.columns.values.tolist()] + value_list
+    final_result = [df.columns.values.tolist()].extend(value_list)
     sheet.update(final_result)
 
     return "mission processed", 200
-
-
-def get_summary(df_user_statistics):
-    total_summary = dict()
-    current_month_summary = dict()
-    previouse_month_summary = dict()
-    event_summary = dict()
-
-    today = date.today()
-    curr_month_start = today.replace(day=1)
-    last_month_end = curr_month_start - timedelta(days=1)
-    last_month_start = last_month_end.replace(day=1)
-
-    users = df_user_statistics["user"].unique()
-    for user in users:
-        user_df = df_user_statistics.loc[df_user_statistics["user"] == user]
-        user_df_last_month = user_df.loc[(user_df['date'] >= last_month_start) & (user_df['date'] <= last_month_end)]
-        user_df_curr_month = user_df.loc[(user_df['date'] >= curr_month_start) & (user_df['date'] <= today)]
-
-        total_summary[user] = user_df["amount"].sum()
-        current_month_summary[user] = user_df_curr_month["amount"].sum()
-        previouse_month_summary[user] = user_df_last_month["amount"].sum()
-
-        if total_summary[user] == 0:
-            del total_summary[user]
-        if current_month_summary[user] == 0:
-            del current_month_summary[user]
-        if previouse_month_summary[user] == 0:
-            del previouse_month_summary[user]
-
-        user_tags = user_df["event_tag"].unique().tolist()
-        user_tags = [str.strip(i) for i in user_tags]
-        if "" in user_tags:
-            user_tags.remove("")
-        for tag in user_tags:
-            if tag not in event_summary:
-                event_summary[tag] = dict()
-            event_summary[tag][user] = user_df.loc[user_df["event_tag"] == tag]["amount"].sum()
-
-    return total_summary, current_month_summary, previouse_month_summary, event_summary
 
 
 def get_sheet():
@@ -328,21 +175,6 @@ def get_sheet_content(sheet):
     return sheet_cache.copy()
 
 
-def get_all_users_from_df(df):
-    users = []
-    for each_name_combination in (df["who"].unique().tolist() + df["from"].unique().tolist()):
-        names = each_name_combination.strip().split(",")
-        for name in names:
-            name = name.strip()
-            name_search = re.search(r"(.*)\(([0-9]+.?[0-9]*)\)", name)
-            if name_search is not None:
-                name = name_search[1]
-            if name not in users and name != "":
-                users.append(name)
-
-    return users
-
-
 def get_transfer_chain(current_arrangement):
     transfer_chain_list = list()
     _get_transfer_chain(current_arrangement, current_arrangement, transfer_chain_list, [])
@@ -368,5 +200,6 @@ def _get_transfer_chain(segment, current_arrangement, transfer_chain_list, curr_
 
 if __name__ == '__main__':
     args = sys.argv
+    app.logger.setLevel(logging.DEBUG)
     app.config.update(json.loads(open("config.json", encoding="utf-8").read()))
     app.run(host="0.0.0.0", port=app.config.get("port"), debug=True)
