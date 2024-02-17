@@ -91,206 +91,195 @@ def _routine(arrangements, user_balance, recommended_result):
     _routine(arrangements, user_balance, recommended_result)
 
 
-class Processor:
-    def __init__(self, content: Content):
-        # make column names configurable maybe
-        self.content = content
-        self.user_statistics = None
-        self.result = None
+def get_summary(user_statistics):
+    total_summary = dict()
+    current_month_summary = dict()
+    previouse_month_summary = dict()
+    event_summary = dict()
 
-    def process(self):
-        content = self.content
-        stat_columns = ["date", "user", "amount", "event_tag"]
-        user_stat = dict()
-        for column in stat_columns:
-            user_stat[column] = list()
+    today = date.today()
+    curr_month_start = today.replace(day=1)
+    last_month_end = curr_month_start - timedelta(days=1)
+    last_month_start = last_month_end.replace(day=1)
 
-        df = content.get_df()
-        users = content.get_users()
+    users = user_statistics["user"].unique()
+    for user in users:
+        user_df = user_statistics.loc[user_statistics["user"] == user]
+        user_df_last_month = user_df.loc[
+            (user_df['date'] >= last_month_start) & (user_df['date'] <= last_month_end)]
+        user_df_curr_month = user_df.loc[(user_df['date'] >= curr_month_start) & (user_df['date'] <= today)]
 
-        result = dict()
+        total_summary[user] = user_df["amount"].sum()
+        current_month_summary[user] = user_df_curr_month["amount"].sum()
+        previouse_month_summary[user] = user_df_last_month["amount"].sum()
 
-        # initialize the result map
-        #     {
-        #         "user1": {user1, user2, user3},
-        #         "user2": {user1, user2, user3},
-        #         "user3": {user1, user2, user3}
-        #     }
-        for user in users:
-            result[user] = dict()
-            for sub_user in users:
-                result[user][sub_user] = 0
+        if total_summary[user] == 0:
+            del total_summary[user]
+        if current_month_summary[user] == 0:
+            del current_month_summary[user]
+        if previouse_month_summary[user] == 0:
+            del previouse_month_summary[user]
 
-        # raw process
-        for row in df.iterrows():
-            row = row[1]
+        user_tags = user_df["event_tag"].unique().tolist()
+        user_tags = [str.strip(i) for i in user_tags]
+        if "" in user_tags:
+            user_tags.remove("")
+        for tag in user_tags:
+            if tag not in event_summary:
+                event_summary[tag] = dict()
+            event_summary[tag][user] = user_df.loc[user_df["event_tag"] == tag]["amount"].sum()
 
-            if row["type"] == "buy":
-                tax_flag = row["tax_flg"]
-                if tax_flag == "y":
-                    tax_flag = current_app.config.get("tax_rate")
-                elif tax_flag == "":
-                    tax_flag = -1
+    return total_summary, current_month_summary, previouse_month_summary, event_summary
 
-                who = row["who"].strip().split(",")
-                who = [str.strip(i) for i in who]
-                split_with_people_num = len(who)
-                raw_who = list()
 
-                indicator_sum = 0
-                user_percentage = dict()
-                for each_user in who:
-                    # we search the format for "hanson(3)"
-                    name_search = None
-                    if "(" in each_user:
-                        name_search = re.search(r"(.*)\(([0-9]+.?[0-9]*)\)", each_user)
+def get_optimized(result, content):
+    result_copy = copy.deepcopy(result)
+    df = content.get_df()
+    df["who"] = df["who"].apply(lambda x: str(x).replace("，", ",").replace("（", "(").replace("）", ")"))
+    users = content.get_users()
+    user_balance = dict()
+    for user in users:
+        user_balance[user] = 0
 
-                    user_name = each_user
+    for user in result_copy:
+        for sub_user in result_copy[user]:
+            user_balance[user] -= result_copy[user][sub_user]
+            user_balance[sub_user] += result_copy[user][sub_user]
 
-                    # partial_indicator / indicator_sum = user percentage
-                    partial_indicator = 1
+    # round the user balance to 2 decimal places
+    for sub_user in user_balance:
+        user_balance[sub_user] = round(user_balance[sub_user], 2)
 
-                    if name_search is not None:
-                        user_name = name_search[1]
-                        partial_indicator_match = re.search(r"(.*)\(([0-9]+.?[0-9]*)\)", each_user)
-                        if partial_indicator_match is not None:
-                            partial_indicator = float(partial_indicator_match[2])
-                            indicator_sum += partial_indicator
-                        else:
-                            indicator_sum = split_with_people_num
+    recommended_result = dict()
+    _routine(result_copy, user_balance, recommended_result)
 
-                    user_percentage.update({user_name: partial_indicator})
+    return recommended_result
 
-                    if user_name not in raw_who and each_user != "":
-                        raw_who.append(user_name)
 
-                if indicator_sum == 0:
-                    indicator_sum = split_with_people_num
-                person_paid_for_it = row["from"]
-                for each_user in raw_who:
-                    user_split_indicator = user_percentage.get(each_user)
-                    user_split_percentage = user_split_indicator / indicator_sum
+def process(content: Content):
+    stat_columns = ["date", "user", "amount", "event_tag"]
+    user_stat = dict()
+    for column in stat_columns:
+        user_stat[column] = list()
 
-                    price_each_user = row["price"] * user_split_percentage if (tax_flag == -1) else row["price"] * (
-                                1 + tax_flag) * user_split_percentage
+    df = content.get_df()
+    users = content.get_users()
 
-                    if each_user != person_paid_for_it:
-                        result[person_paid_for_it][each_user] += price_each_user
+    result = dict()
 
-                    user_stat["date"].append(row["date"])
-                    user_stat["user"].append(each_user)
-                    user_stat["amount"].append(price_each_user)
-                    user_stat["event_tag"].append(row["tag"])
+    # initialize the result map
+    #     {
+    #         "user1": {user1, user2, user3},
+    #         "user2": {user1, user2, user3},
+    #         "user3": {user1, user2, user3}
+    #     }
+    for user in users:
+        result[user] = dict()
+        for sub_user in users:
+            result[user][sub_user] = 0
 
-            elif row["type"] == "pay":
-                from_who = row["from"]
-                to_who = row["to"]
-                how_much = -abs(row["price"])
-                result[from_who][to_who] -= how_much
-            elif row["type"] == "debt_trans":
-                from_who = row["from"]
-                to_who = row["to"]
-                how_much = row["price"]
-                about_who = row["who"]
+    # raw process
+    for row in df.iterrows():
+        row = row[1]
 
-                result[to_who][from_who] -= how_much
-                result[to_who][about_who] += how_much
-                result[from_who][about_who] -= how_much
-            elif row["type"] == "debt_adj":
-                from_who = row["from"]
-                to_who = row["to"]
-                how_much = row["price"]
-                result[to_who][from_who] += how_much
+        if row["type"] == "buy":
+            tax_flag = row["tax_flg"]
+            if tax_flag == "y":
+                tax_flag = current_app.config.get("tax_rate")
+            elif tax_flag == "":
+                tax_flag = -1
 
-        # 最后把它变成谁给谁转钱
-        final_result = dict()
-        # init
-        for user in users:
-            final_result[user] = dict()
+            who = row["who"].strip().split(",")
+            who = [str.strip(i) for i in who]
+            split_with_people_num = len(who)
+            raw_who = list()
 
-        for key in list(result.keys()):
-            for user in list(result[key].keys()):
-                final_result[user][key] = result[key][user]
+            indicator_sum = 0
+            user_percentage = dict()
+            for each_user in who:
+                # we search the format for "hanson(3)"
+                name_search = None
+                if "(" in each_user:
+                    name_search = re.search(r"(.*)\(([0-9]+.?[0-9]*)\)", each_user)
 
-        # deep process 为了避免你给我转十块我给你转十块的事情发生
-        final_result = simple_process(final_result)
+                user_name = each_user
 
-        # 去掉0
-        final_result = clean_zero_node(final_result)
+                # partial_indicator / indicator_sum = user percentage
+                partial_indicator = 1
 
-        # 那0都去掉了，就可能出现空的dict，也要去掉
-        for each in list(final_result.keys()):
-            if len(final_result[each]) == 0:
-                del final_result[each]
+                if name_search is not None:
+                    user_name = name_search[1]
+                    partial_indicator_match = re.search(r"(.*)\(([0-9]+.?[0-9]*)\)", each_user)
+                    if partial_indicator_match is not None:
+                        partial_indicator = float(partial_indicator_match[2])
+                        indicator_sum += partial_indicator
+                    else:
+                        indicator_sum = split_with_people_num
 
-        stat_df = pd.DataFrame.from_dict(user_stat)
-        self.user_statistics = stat_df
+                user_percentage.update({user_name: partial_indicator})
 
-        self.result = final_result
-        return final_result
+                if user_name not in raw_who and each_user != "":
+                    raw_who.append(user_name)
 
-    def get_summary(self):
-        user_statistics = self.user_statistics
-        total_summary = dict()
-        current_month_summary = dict()
-        previouse_month_summary = dict()
-        event_summary = dict()
+            if indicator_sum == 0:
+                indicator_sum = split_with_people_num
+            person_paid_for_it = row["from"]
+            for each_user in raw_who:
+                user_split_indicator = user_percentage.get(each_user)
+                user_split_percentage = user_split_indicator / indicator_sum
 
-        today = date.today()
-        curr_month_start = today.replace(day=1)
-        last_month_end = curr_month_start - timedelta(days=1)
-        last_month_start = last_month_end.replace(day=1)
+                price_each_user = row["price"] * user_split_percentage if (tax_flag == -1) else row["price"] * (
+                            1 + tax_flag) * user_split_percentage
 
-        users = user_statistics["user"].unique()
-        for user in users:
-            user_df = user_statistics.loc[user_statistics["user"] == user]
-            user_df_last_month = user_df.loc[
-                (user_df['date'] >= last_month_start) & (user_df['date'] <= last_month_end)]
-            user_df_curr_month = user_df.loc[(user_df['date'] >= curr_month_start) & (user_df['date'] <= today)]
+                if each_user != person_paid_for_it:
+                    result[person_paid_for_it][each_user] += price_each_user
 
-            total_summary[user] = user_df["amount"].sum()
-            current_month_summary[user] = user_df_curr_month["amount"].sum()
-            previouse_month_summary[user] = user_df_last_month["amount"].sum()
+                user_stat["date"].append(row["date"])
+                user_stat["user"].append(each_user)
+                user_stat["amount"].append(price_each_user)
+                user_stat["event_tag"].append(row["tag"])
 
-            if total_summary[user] == 0:
-                del total_summary[user]
-            if current_month_summary[user] == 0:
-                del current_month_summary[user]
-            if previouse_month_summary[user] == 0:
-                del previouse_month_summary[user]
+        elif row["type"] == "pay":
+            from_who = row["from"]
+            to_who = row["to"]
+            how_much = -abs(row["price"])
+            result[from_who][to_who] -= how_much
+        elif row["type"] == "debt_trans":
+            from_who = row["from"]
+            to_who = row["to"]
+            how_much = row["price"]
+            about_who = row["who"]
 
-            user_tags = user_df["event_tag"].unique().tolist()
-            user_tags = [str.strip(i) for i in user_tags]
-            if "" in user_tags:
-                user_tags.remove("")
-            for tag in user_tags:
-                if tag not in event_summary:
-                    event_summary[tag] = dict()
-                event_summary[tag][user] = user_df.loc[user_df["event_tag"] == tag]["amount"].sum()
+            result[to_who][from_who] -= how_much
+            result[to_who][about_who] += how_much
+            result[from_who][about_who] -= how_much
+        elif row["type"] == "debt_adj":
+            from_who = row["from"]
+            to_who = row["to"]
+            how_much = row["price"]
+            result[to_who][from_who] += how_much
 
-        return total_summary, current_month_summary, previouse_month_summary, event_summary
-    
-    def get_optimized(self):
-        if self.result is None:
-            self.process()
-        result_copy = copy.deepcopy(self.result)
-        df = self.content.get_df()
-        df["who"] = df["who"].apply(lambda x: str(x).replace("，", ",").replace("（", "(").replace("）", ")"))
-        users = self.content.get_users()
-        user_balance = dict()
-        for user in users:
-            user_balance[user] = 0
+    # 最后把它变成谁给谁转钱
+    final_result = dict()
+    # init
+    for user in users:
+        final_result[user] = dict()
 
-        for user in result_copy:
-            for sub_user in result_copy[user]:
-                user_balance[user] -= result_copy[user][sub_user]
-                user_balance[sub_user] += result_copy[user][sub_user]
+    for key in list(result.keys()):
+        for user in list(result[key].keys()):
+            final_result[user][key] = result[key][user]
 
-        # round the user balance to 2 decimal places
-        for sub_user in user_balance:
-            user_balance[sub_user] = round(user_balance[sub_user], 2)
+    # deep process 为了避免你给我转十块我给你转十块的事情发生
+    final_result = simple_process(final_result)
 
-        recommended_result = dict()
-        _routine(result_copy, user_balance, recommended_result)
+    # 去掉0
+    final_result = clean_zero_node(final_result)
 
-        return recommended_result
+    # 那0都去掉了，就可能出现空的dict，也要去掉
+    for each in list(final_result.keys()):
+        if len(final_result[each]) == 0:
+            del final_result[each]
+
+    stat_df = pd.DataFrame.from_dict(user_stat)
+
+    return final_result, stat_df

@@ -11,7 +11,7 @@ import sys
 import gspread
 from oauth2client.service_account import ServiceAccountCredentials
 
-from Processor import Processor
+import Processor
 from Content import Content
 
 app = Flask(__name__, template_folder="templates")
@@ -40,23 +40,22 @@ def start_mission():
     sheet_raw_content = get_sheet_content(sheet)
 
     sheet_content = Content(sheet_raw_content)
-    processor = Processor(sheet_content)
 
     st = time.time()
-    result = processor.process()
+    result, user_stat = Processor.process(sheet_content)
     et = time.time()
 
     time_pass = et - st
     app.logger.debug(time_pass)
 
     st = time.time()
-    recommended_result = processor.get_optimized()
+    recommended_result = Processor.get_optimized(result, sheet_content)
     et = time.time()
 
     time_pass = et - st
     app.logger.debug(time_pass)
 
-    summary, curr_month_summary, last_month_summary, event_summary = processor.get_summary()
+    summary, curr_month_summary, last_month_summary, event_summary = Processor.get_summary(user_stat)
     et = time.time()
 
     time_pass = et - st
