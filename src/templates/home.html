@@ -104,47 +104,47 @@
         <button onClick='window.location.reload();'>Refresh Page</button>
     </div>
 
-    <div class="debug">
-        <div id="major-content">
-            <h2>现在呢就是这么个状况：</h2>
-            {% for key, value in major_content.items() %}
-                <p>
-                    {{key}}: {
-                    {% for sub_key, sub_value in value.items() %}
-                        "{{sub_key}}": {{ sub_value }}
-                    {% endfor %}
-                    }
-                </p>
-            {% endfor %}
-            <button onClick='window.location.reload();'>Refresh Page</button>
-        </div>
-        <div>
-            <h2>但是这样呢，能转钱转的简单点：</h2>
-            {% for key, value in recommended_result.items() %}
-                <p>
-                    {% set ns = namespace(sum_value = 0) %}
-                    {{key}}: {
-                    {% for sub_key, sub_value in value.items() %}
-                        "{{sub_key}}": {{ sub_value }}
-                        {% set ns.sum_value = ns.sum_value + sub_value %}
-                    {% endfor %}
-                    } sum: {{ ns.sum_value | round(2) }}
-                </p>
-            {% endfor %}
-            <hr>
-
-            {% for procedure in debt_transfer_procedure %}
-                <form class="debt-trans-form">
-                    <p>[{{procedure["from"]}}] to [{{procedure["to"]}}] adjust [{{procedure["amount"]}}]</p>
-                    <input type="text" class="debt-trans-row" name="from" value={{procedure["from"]}}>
-                    <input type="text" class="debt-trans-row" name="to" value={{procedure["to"]}}>
-                    <input type="text" class="debt-trans-row" name="adj_amount" value={{procedure["amount"]}}>
-                </form>
-            {% endfor %}
-            <button id="debt-trans-submit" onclick="AbortController">上了！</button>
-
-        </div>
-    </div>
+{#    <div class="debug">#}
+{#        <div id="major-content">#}
+{#            <h2>现在呢就是这么个状况：</h2>#}
+{#            {% for key, value in major_content.items() %}#}
+{#                <p>#}
+{#                    {{key}}: {#}
+{#                    {% for sub_key, sub_value in value.items() %}#}
+{#                        "{{sub_key}}": {{ sub_value }}#}
+{#                    {% endfor %}#}
+{#                    }#}
+{#                </p>#}
+{#            {% endfor %}#}
+{#            <button onClick='window.location.reload();'>Refresh Page</button>#}
+{#        </div>#}
+{#        <div>#}
+{#            <h2>但是这样呢，能转钱转的简单点：</h2>#}
+{#            {% for key, value in recommended_result.items() %}#}
+{#                <p>#}
+{#                    {% set ns = namespace(sum_value = 0) %}#}
+{#                    {{key}}: {#}
+{#                    {% for sub_key, sub_value in value.items() %}#}
+{#                        "{{sub_key}}": {{ sub_value }}#}
+{#                        {% set ns.sum_value = ns.sum_value + sub_value %}#}
+{#                    {% endfor %}#}
+{#                    } sum: {{ ns.sum_value | round(2) }}#}
+{#                </p>#}
+{#            {% endfor %}#}
+{#            <hr>#}
+{##}
+{#            {% for procedure in debt_transfer_procedure %}#}
+{#                <form class="debt-trans-form">#}
+{#                    <p>[{{procedure["from"]}}] to [{{procedure["to"]}}] adjust [{{procedure["amount"]}}]</p>#}
+{#                    <input type="text" class="debt-trans-row" name="from" value={{procedure["from"]}}>#}
+{#                    <input type="text" class="debt-trans-row" name="to" value={{procedure["to"]}}>#}
+{#                    <input type="text" class="debt-trans-row" name="adj_amount" value={{procedure["amount"]}}>#}
+{#                </form>#}
+{#            {% endfor %}#}
+{#            <button id="debt-trans-submit" onclick="AbortController">上了！</button>#}
+{##}
+{#        </div>#}
+{#    </div>#}
 
 </div>
 
