@@ -106,43 +106,6 @@ def process_pay():
     return "mission processed", 200
 
 
-@decorators.router_wrapper
-@app.route("/adjustment", methods=["POST"])
-def process_debt_adjust():
-    json_request = request.json
-
-    result = list()
-    for each in json_request:
-        from_who = each.get("from")
-        to_who = each.get("to")
-        amount = each.get("adj_amount")
-
-        # construct row
-        time_now = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
-        sub_result = dict()
-        sub_result["date"] = time_now
-        sub_result["from"] = from_who
-        sub_result["to"] = to_who
-        sub_result["product"] = "债务调整"
-        sub_result["who"] = ""
-        sub_result["price"] = amount
-        sub_result["type"] = "debt_adj"
-        result.append(sub_result)
-
-    sheet = get_sheet()
-    sheet_content = get_sheet_content(sheet)
-    df = pd.DataFrame(sheet_content)
-    df = pd.concat([df, pd.DataFrame(result, columns=df.columns)])
-    df.reset_index()
-    df = df.where(pd.notnull(df), None)
-
-    value_list = df.values.tolist()
-    final_result = [df.columns.values.tolist()].extend(value_list)
-    sheet.update(final_result)
-
-    return "mission processed", 200
-
-
 def get_sheet():
     SHEET_ID = app.config.get("sheet_id")
 
@@ -172,29 +135,6 @@ def get_sheet_content(sheet):
             last_update_ts = local_last_update_ts
             sheet_cache = sheet.get_all_records()
     return sheet_cache.copy()
-
-
-def get_transfer_chain(current_arrangement):
-    transfer_chain_list = list()
-    _get_transfer_chain(current_arrangement, current_arrangement, transfer_chain_list, [])
-    if len(transfer_chain_list) > 0:
-        return max(transfer_chain_list, key=len)
-    else:
-        return list()
-
-
-def _get_transfer_chain(segment, current_arrangement, transfer_chain_list, curr_list):
-    for user in segment:
-        if user in curr_list:
-            curr_list.append(user)
-            transfer_chain_list.append(curr_list.copy())
-        elif user in current_arrangement and len(current_arrangement[user]) > 0:
-            curr_list.append(user)
-            _get_transfer_chain(current_arrangement[user], current_arrangement, transfer_chain_list, curr_list)
-        else:
-            curr_list.append(user)
-            transfer_chain_list.append(curr_list.copy())
-        curr_list.pop()
 
 
 if __name__ == '__main__':
