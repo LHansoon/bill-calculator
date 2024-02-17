@@ -23,53 +23,6 @@ global sheet_cache
 lock = RLock()
 
 
-def build_transfer_base_on_transfer_order(from_user_arrangement, from_user, to_user, amount):
-    result = list()
-    if to_user in from_user_arrangement:
-        amount -= from_user_arrangement[to_user]
-    while amount != 0:
-        # if len(from_user_arrangement) == 0 or (len(from_user_arrangement) == 1 and to_user in from_user_arrangement):
-        if len(from_user_arrangement) == 0:
-            del from_user_arrangement
-            return result
-
-        if to_user in from_user_arrangement:
-            from_user_arrangement_cpy = copy.deepcopy(from_user_arrangement)
-            del from_user_arrangement_cpy[to_user]
-            min_in_from_user = min(from_user_arrangement_cpy, key=from_user_arrangement_cpy.get)
-        else:
-            min_in_from_user = min(from_user_arrangement, key=from_user_arrangement.get)
-
-        if to_user not in from_user_arrangement:
-            from_user_arrangement[to_user] = 0
-
-        transfer_amount = 0
-        min_value_in_from_user = from_user_arrangement[min_in_from_user]
-        if min_value_in_from_user < amount:
-            amount -= min_value_in_from_user
-            del from_user_arrangement[min_in_from_user]
-
-            from_user_arrangement[to_user] += min_value_in_from_user
-
-            transfer_amount = min_value_in_from_user
-        elif min_value_in_from_user >= amount:
-            from_user_arrangement[min_in_from_user] -= amount
-            from_user_arrangement[to_user] += amount
-
-            if from_user_arrangement[min_in_from_user] == 0:
-                del from_user_arrangement[min_in_from_user]
-            transfer_amount = amount
-            amount = 0
-        procedure = dict()
-        procedure["from"] = min_in_from_user
-        procedure["to"] = to_user
-        procedure["about_who"] = from_user
-        procedure["amount"] = transfer_amount
-        result.append(procedure)
-
-    return result
-
-
 def _routine(arrangements, user_balance, recommended_result):
     user_balance_cpy = copy.deepcopy(user_balance)
     for user in user_balance:
@@ -390,74 +343,6 @@ def get_all_users_from_df(df):
     return users
 
 
-def process_link(result, path):
-    trans_result = {}
-    i = 0
-    current = path[i]
-    next = path[i + 1]
-    next_next = path[i + 2]
-    current_to_next = result[current][next]
-    next_to_next_next = result[next][next_next]
-
-    if current_to_next <= next_to_next_next:
-        if result[current].get(next_next) is None:
-            result[current][next_next] = 0
-
-        trans_result["from"] = next
-        trans_result["to"] = next_next
-        trans_result["about_who"] = current
-        trans_result["amount"] = current_to_next
-
-        result[current][next_next] += current_to_next
-        result[next][next_next] -= current_to_next
-        del result[current][next]
-    else:
-        if result[current].get(next_next) is None:
-            result[current][next_next] = 0
-
-        trans_result["from"] = next
-        trans_result["to"] = next_next
-        trans_result["about_who"] = current
-        trans_result["amount"] = next_to_next_next
-
-        result[current][next_next] += next_to_next_next
-        result[current][next] -= result[next][next_next]
-        del result[next][next_next]
-    return trans_result
-
-
-def clean_zero_node(arrangement):
-    new_arrangement = arrangement.copy()
-    for each in list(new_arrangement.keys()):
-        for sub_each in list(new_arrangement[each].keys()):
-            new_arrangement[each][sub_each] = round(new_arrangement[each][sub_each], 2)
-            if new_arrangement[each][sub_each] == 0:
-                del new_arrangement[each][sub_each]
-    return new_arrangement
-
-
-def simple_process(arrangement):
-    new_arrangement = arrangement.copy()
-    finished_user = []
-    for user in list(new_arrangement.keys()):
-        user_bill = new_arrangement[user]
-        for sub_user in user_bill.keys():
-            if sub_user not in finished_user and new_arrangement.get(sub_user) is not None:
-                user_need_to_pay = new_arrangement[user][sub_user]
-                sub_user_need_to_pay = new_arrangement[sub_user][user] if new_arrangement[sub_user].get(
-                    user) is not None else -1
-                if sub_user_need_to_pay != -1:
-                    if sub_user in list(user_bill.keys()):
-                        if user_need_to_pay <= sub_user_need_to_pay:
-                            new_arrangement[user][sub_user] = 0
-                            new_arrangement[sub_user][user] = sub_user_need_to_pay - user_need_to_pay
-                        else:
-                            new_arrangement[sub_user][user] = 0
-                            new_arrangement[user][sub_user] = user_need_to_pay - sub_user_need_to_pay
-        finished_user.append(user)
-    return new_arrangement
-
-
 def get_transfer_chain(current_arrangement):
     transfer_chain_list = list()
     _get_transfer_chain(current_arrangement, current_arrangement, transfer_chain_list, [])
@@ -479,22 +364,6 @@ def _get_transfer_chain(segment, current_arrangement, transfer_chain_list, curr_
             curr_list.append(user)
             transfer_chain_list.append(curr_list.copy())
         curr_list.pop()
-
-
-def optimize_transfer(current_arrangement):
-    new_arrangement = copy.deepcopy(current_arrangement)
-    debt_transfer_procedure = []
-    while True:
-        new_arrangement = clean_zero_node(new_arrangement)
-        traversal = get_transfer_chain(new_arrangement)
-        if len(traversal) > 2:
-            procedure = process_link(new_arrangement, traversal)
-            if procedure.get("amount") != 0:
-                debt_transfer_procedure.append(procedure)
-        else:
-            break
-
-    return new_arrangement, debt_transfer_procedure
 
 
 if __name__ == '__main__':
