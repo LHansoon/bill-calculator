@@ -43,11 +43,12 @@ function populate_content(result) {
         console.log(user);
         let sub_users = ""
         for (let sub_user in result[user]){
+            let sub_user_amount = Number(result[user][sub_user]).toFixed(2);
+
             let btn = `
-                <button class="clear_debt_btn" data-from="${user}" data-to="${sub_user}" data-amount="${result[user][sub_user]}" onclick="clearDebt(this)">还钱</button>
+                <button class="clear_debt_btn" data-from="${user}" data-to="${sub_user}" data-amount="${sub_user_amount}" onclick="clearDebt(this)">还钱</button>
             `;
 
-            let sub_user_amount = result[user][sub_user];
             sub_users += `
                 <a class="draggable" draggable="true" data-user="${sub_user}" data-amount="${sub_user_amount}">"${sub_user}": ${sub_user_amount} ${btn}</a>
             `;
