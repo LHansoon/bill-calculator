@@ -143,7 +143,7 @@ def parse_row(row):
 
 class Processor:
     def __init__(self):
-        self.regex_search_user_share_pair = re.compile(r"([^\r\n\t\f\v,()]+)(?:\((\d.?\d*)\))?")
+        self.regex_search_user_share_pair = re.compile(r"([^\r\n\t\f\v,()]+)(?:\((\d*.?\d*)\))?")
 
     def process(self, content: Content):
         stat_columns = ["date", "user", "amount", "event_tag"]
@@ -214,7 +214,10 @@ class Processor:
                     price_each_user = row["price"] * (1 + tax_rate) * user_share_percentage
 
                     if user != person_paid_for_it:
-                        result[user][person_paid_for_it] += price_each_user
+                        try:
+                            result[user][person_paid_for_it] += price_each_user
+                        except Exception as e:
+                            print(3)
 
                     user_stat["date"].append(row["date"])
                     user_stat["user"].append(user)
