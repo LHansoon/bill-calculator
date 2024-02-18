@@ -26,8 +26,7 @@ def simple_process(arrangement):
         for sub_user in user_bill.keys():
             if sub_user not in finished_user and new_arrangement.get(sub_user) is not None:
                 user_need_to_pay = new_arrangement[user][sub_user]
-                sub_user_need_to_pay = new_arrangement[sub_user][user] if new_arrangement[sub_user].get(
-                    user) is not None else -1
+                sub_user_need_to_pay = new_arrangement[sub_user][user] if new_arrangement[sub_user].get(user) is not None else -1
                 if sub_user_need_to_pay != -1:
                     if sub_user in list(user_bill.keys()):
                         if user_need_to_pay <= sub_user_need_to_pay:
@@ -156,130 +155,131 @@ def get_optimized(result, content):
     return recommended_result
 
 
-def process(content: Content):
-    stat_columns = ["date", "user", "amount", "event_tag"]
-    user_stat = dict()
-    for column in stat_columns:
-        user_stat[column] = list()
+def parse_row(row):
+    pass
 
-    df = content.get_df()
-    users = content.get_users()
 
-    result = dict()
+class Processor:
+    def __init__(self):
+        self.regex_search_user_share_pair = re.compile(r"([^\r\n\t\f\v,()]+)(?:\((\d.?\d*)\))?")
 
-    # initialize the result map
-    #     {
-    #         "user1": {user1, user2, user3},
-    #         "user2": {user1, user2, user3},
-    #         "user3": {user1, user2, user3}
-    #     }
-    for user in users:
-        result[user] = dict()
-        for sub_user in users:
-            result[user][sub_user] = 0
+    def process(self, content: Content):
+        stat_columns = ["date", "user", "amount", "event_tag"]
+        user_stat = dict()
+        for column in stat_columns:
+            user_stat[column] = list()
 
-    # raw process
-    for row in df.iterrows():
-        row = row[1]
+        df = content.get_df()
+        users = content.get_users()
 
-        if row["type"] == "buy":
-            tax_flag = row["tax_flg"]
-            if tax_flag == "y":
-                tax_flag = current_app.config.get("tax_rate")
-            elif tax_flag == "":
-                tax_flag = -1
+        result = dict()
 
-            who = row["who"].strip().split(",")
-            who = [str.strip(i) for i in who]
-            split_with_people_num = len(who)
-            raw_who = list()
+        # initialize the result map
+        #     {
+        #         "user1": {user1, user2, user3},
+        #         "user2": {user1, user2, user3},
+        #         "user3": {user1, user2, user3}
+        #     }
+        for user in users:
+            result[user] = dict()
+            for sub_user in users:
+                result[user][sub_user] = 0
 
-            indicator_sum = 0
-            user_percentage = dict()
-            for each_user in who:
-                # we search the format for "hanson(3)"
-                name_search = None
-                if "(" in each_user:
-                    name_search = re.search(r"(.*)\(([0-9]+.?[0-9]*)\)", each_user)
+        # raw process
+        for row in df.iterrows():
+            row = row[1]
 
-                user_name = each_user
+            if row["type"] == "buy":
+                person_paid_for_it = row["from"]
+                who = row["who"]
+                tax_flag = row["tax_flg"]
+                tax_rate = tax_flag
+                if tax_flag == "y":
+                    tax_rate = current_app.config.get("tax_rate")
+                elif tax_flag == "":
+                    tax_rate = 0
 
-                # partial_indicator / indicator_sum = user percentage
-                partial_indicator = 1
+                user_share_pair = dict()
+                total_share = 0
+                if "(" in who:
+                    user_n_share_search = self.regex_search_user_share_pair.findall(who)
 
-                if name_search is not None:
-                    user_name = name_search[1]
-                    partial_indicator_match = re.search(r"(.*)\(([0-9]+.?[0-9]*)\)", each_user)
-                    if partial_indicator_match is not None:
-                        partial_indicator = float(partial_indicator_match[2])
-                        indicator_sum += partial_indicator
-                    else:
-                        indicator_sum = split_with_people_num
+                    for combination in user_n_share_search:
+                        name = combination[0].strip()
+                        share = combination[1].strip()
+                        if share != "":
+                            try:
+                                share = float(share)
+                            except ValueError:
+                                # 说句实话，这里如果真的有value error的话应该要promt一个提示。。像现在这样默认1这辈子都找不到哪里有问题。。
+                                pass
+                        else:
+                            share = 1
+                        try:
+                            total_share += share
+                        except Exception as e:
+                            print(e)
+                        user_share_pair[name] = share
+                else:
+                    users_in_who = who.split(",")
+                    for user in users_in_who:
+                        user = user.strip()
+                        user_share_pair[user] = 1
+                        total_share += 1
 
-                user_percentage.update({user_name: partial_indicator})
+                for user in user_share_pair:
+                    user_share_percentage = user_share_pair[user] / total_share
+                    price_each_user = row["price"] * (1 + tax_rate) * user_share_percentage
 
-                if user_name not in raw_who and each_user != "":
-                    raw_who.append(user_name)
+                    if user != person_paid_for_it:
+                        result[person_paid_for_it][user] += price_each_user
 
-            if indicator_sum == 0:
-                indicator_sum = split_with_people_num
-            person_paid_for_it = row["from"]
-            for each_user in raw_who:
-                user_split_indicator = user_percentage.get(each_user)
-                user_split_percentage = user_split_indicator / indicator_sum
+                    user_stat["date"].append(row["date"])
+                    user_stat["user"].append(user)
+                    user_stat["amount"].append(price_each_user)
+                    user_stat["event_tag"].append(row["tag"])
 
-                price_each_user = row["price"] * user_split_percentage if (tax_flag == -1) else row["price"] * (
-                            1 + tax_flag) * user_split_percentage
+            elif row["type"] == "pay":
+                from_who = row["from"]
+                to_who = row["to"]
+                how_much = -abs(row["price"])
+                result[from_who][to_who] -= how_much
+            elif row["type"] == "debt_trans":
+                from_who = row["from"]
+                to_who = row["to"]
+                how_much = row["price"]
+                about_who = row["who"]
 
-                if each_user != person_paid_for_it:
-                    result[person_paid_for_it][each_user] += price_each_user
+                result[to_who][from_who] -= how_much
+                result[to_who][about_who] += how_much
+                result[from_who][about_who] -= how_much
+            elif row["type"] == "debt_adj":
+                from_who = row["from"]
+                to_who = row["to"]
+                how_much = row["price"]
+                result[to_who][from_who] += how_much
 
-                user_stat["date"].append(row["date"])
-                user_stat["user"].append(each_user)
-                user_stat["amount"].append(price_each_user)
-                user_stat["event_tag"].append(row["tag"])
+        # 最后把它变成谁给谁转钱
+        final_result = dict()
+        # init
+        for user in users:
+            final_result[user] = dict()
 
-        elif row["type"] == "pay":
-            from_who = row["from"]
-            to_who = row["to"]
-            how_much = -abs(row["price"])
-            result[from_who][to_who] -= how_much
-        elif row["type"] == "debt_trans":
-            from_who = row["from"]
-            to_who = row["to"]
-            how_much = row["price"]
-            about_who = row["who"]
+        for key in list(result.keys()):
+            for user in list(result[key].keys()):
+                final_result[user][key] = result[key][user]
 
-            result[to_who][from_who] -= how_much
-            result[to_who][about_who] += how_much
-            result[from_who][about_who] -= how_much
-        elif row["type"] == "debt_adj":
-            from_who = row["from"]
-            to_who = row["to"]
-            how_much = row["price"]
-            result[to_who][from_who] += how_much
+        # deep process 为了避免你给我转十块我给你转十块的事情发生
+        final_result = simple_process(final_result)
 
-    # 最后把它变成谁给谁转钱
-    final_result = dict()
-    # init
-    for user in users:
-        final_result[user] = dict()
+        # 去掉0
+        final_result = clean_zero_node(final_result)
 
-    for key in list(result.keys()):
-        for user in list(result[key].keys()):
-            final_result[user][key] = result[key][user]
+        # 那0都去掉了，就可能出现空的dict，也要去掉
+        for each in list(final_result.keys()):
+            if len(final_result[each]) == 0:
+                del final_result[each]
 
-    # deep process 为了避免你给我转十块我给你转十块的事情发生
-    final_result = simple_process(final_result)
+        stat_df = pd.DataFrame.from_dict(user_stat)
 
-    # 去掉0
-    final_result = clean_zero_node(final_result)
-
-    # 那0都去掉了，就可能出现空的dict，也要去掉
-    for each in list(final_result.keys()):
-        if len(final_result[each]) == 0:
-            del final_result[each]
-
-    stat_df = pd.DataFrame.from_dict(user_stat)
-
-    return final_result, stat_df
+        return final_result, stat_df

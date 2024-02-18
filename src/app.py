@@ -37,12 +37,11 @@ def process_mission():
 @app.route("/", methods=["GET"])
 def start_mission():
     sheet = get_sheet()
-    sheet_raw_content = get_sheet_content(sheet)
-
-    sheet_content = Content(sheet_raw_content)
+    sheet_content = Content(sheet.get_all_records())
 
     st = time.time()
-    result, user_stat = Processor.process(sheet_content)
+    processor = Processor.Processor()
+    result, user_stat = processor.process(sheet_content)
     et = time.time()
 
     time_pass = et - st
@@ -119,22 +118,6 @@ def get_sheet():
 
     sheet = client.open_by_key(SHEET_ID).sheet1
     return sheet
-
-
-def get_sheet_content(sheet):
-    global last_update_ts
-    global sheet_cache
-    local_last_update_ts = sheet.spreadsheet.lastUpdateTime
-    with lock:
-        try:
-            last_update_ts
-        except:
-            last_update_ts = local_last_update_ts
-            sheet_cache = sheet.get_all_records()
-        if last_update_ts != local_last_update_ts:
-            last_update_ts = local_last_update_ts
-            sheet_cache = sheet.get_all_records()
-    return sheet_cache.copy()
 
 
 if __name__ == '__main__':
