@@ -23,7 +23,7 @@ def clean_zero_node(arrangement):
 def _routine(arrangements, user_balance, recommended_result):
     user_balance_cpy = copy.deepcopy(user_balance)
     for user in user_balance:
-        if user_balance[user] == 0:
+        if user_balance[user] == 0 or abs(user_balance[user]) < 0.00001:
             del user_balance_cpy[user]
     user_balance = user_balance_cpy
 
@@ -36,8 +36,8 @@ def _routine(arrangements, user_balance, recommended_result):
     except ValueError:
         return
 
-    max_minimum_value = round(user_balance[max_minimum], 2)
-    max_maximum_value = round(user_balance[max_maximum], 2)
+    max_minimum_value = user_balance[max_minimum]
+    max_maximum_value = user_balance[max_maximum]
 
     summation = max_minimum_value + max_maximum_value
 
@@ -126,12 +126,13 @@ def get_optimized(result, content):
             user_balance[user] -= result_copy[user][sub_user]
             user_balance[sub_user] += result_copy[user][sub_user]
 
-    # round the user balance to 2 decimal places
-    for sub_user in user_balance:
-        user_balance[sub_user] = round(user_balance[sub_user], 2)
-
     recommended_result = dict()
     _routine(result_copy, user_balance, recommended_result)
+
+    # round the user balance to 2 decimal places
+    for user in recommended_result:
+        for sub_user in recommended_result[user]:
+            recommended_result[user][sub_user] = round(recommended_result[user][sub_user], 2)
 
     return recommended_result
 
