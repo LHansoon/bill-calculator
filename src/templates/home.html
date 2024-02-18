@@ -4,14 +4,48 @@
     <meta charset="UTF-8">
     <title>home</title>
     <style>
-        #pay-section {
-            float: left;
-            width: 15%;
+        .loader {
+            vertical-align: middle;
+            display: inline-block;
+            border: 2px solid #f3f3f3;
+            border-radius: 50%;
+            border-top: 2px solid #3498db;
+            width: 12px;
+            height: 12px;
+            -webkit-animation: spin 0.5s linear infinite; /* Safari */
+            animation: spin 0.5s linear infinite;
+        }
+
+        /* Safari */
+        @-webkit-keyframes spin {
+            0% { -webkit-transform: rotate(0deg); }
+            100% { -webkit-transform: rotate(360deg); }
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+
+
+        .placeholder {
+            background-color: greenyellow;
+            display: inline-block;
+            width: 100px;
+            text-align: center;
+        }
+        .sub_user_entry_container {
+            display: inline-block;
+        }
+        .user_entry_container {
+            margin-block-start: 1em;
+            margin-block-end: 1em;
         }
 
         #sheet_viewer {
-            float: right;
-            width: 85%;
+            {#float: left;#}
+            {#width: 85%;#}
             height: 500px;
         }
 
@@ -20,21 +54,19 @@
         /*    height: 300px;*/
         /*}*/
 
-        #major-container, #summary-section, #event-summary-section {
+        #main-container > div{
+            display: inline-block;
+            width: 49%;
+            vertical-align: top;
+        }
+
+        #summary-section, #event-summary-section {
             display: flex;
             flex-wrap: wrap;
         }
 
-        #major-content {
-            width: 50%;
-        }
-
-        #major-content-recommended {
-            width: 50%;
-        }
-
-        .debt-trans-row {
-            display: none;
+        #major-info > div {
+            width: 100%;
         }
 
         .summary-block {
@@ -83,71 +115,42 @@
 
     </style>
 </head>
-<body>
+<body onload="reset_cursor()">
 
-<div id="major-container">
-    <div id="major-content">
-        <h2>现在呢就是这么个状况：</h2>
-        {% for key, value in recommended_result.items() %}
-            <p>
-
-                {{key}}: {
-                {% for sub_key, sub_value in value.items() %}
-                    "{{sub_key}}": {{ sub_value }} <button class="clear_debt_btn" data-from="{{ key }}" data-to="{{ sub_key }}" data-amount="{{ sub_value }}" onclick="clearDebt(this)">还钱</button>
-
-                {% endfor %}
-                }
-
-
-            </p>
-        {% endfor %}
-        <button onClick='window.location.reload();'>Refresh Page</button>
-    </div>
-
-    <div class="debug">
+<div id="main-container">
+    <div id="major-info">
         <div id="major-content">
-            <h2>现在呢就是这么个状况：</h2>
-            {% for key, value in major_content.items() %}
-                <p>
-                    {{key}}: {
-                    {% for sub_key, sub_value in value.items() %}
-                        "{{sub_key}}": {{ sub_value }}
-                    {% endfor %}
-                    }
-                </p>
-            {% endfor %}
-            <button onClick='window.location.reload();'>Refresh Page</button>
+
         </div>
         <div>
-            <h2>但是这样呢，能转钱转的简单点：</h2>
-            {% for key, value in recommended_result.items() %}
-                <p>
-                    {% set ns = namespace(sum_value = 0) %}
-                    {{key}}: {
-                    {% for sub_key, sub_value in value.items() %}
-                        "{{sub_key}}": {{ sub_value }}
-                        {% set ns.sum_value = ns.sum_value + sub_value %}
-                    {% endfor %}
-                    } sum: {{ ns.sum_value | round(2) }}
-                </p>
-            {% endfor %}
-            <hr>
-
-            {% for procedure in debt_transfer_procedure %}
-                <form class="debt-trans-form">
-                    <p>[{{procedure["from"]}}] to [{{procedure["to"]}}] adjust [{{procedure["amount"]}}]</p>
-                    <input type="text" class="debt-trans-row" name="from" value={{procedure["from"]}}>
-                    <input type="text" class="debt-trans-row" name="to" value={{procedure["to"]}}>
-                    <input type="text" class="debt-trans-row" name="adj_amount" value={{procedure["amount"]}}>
-                </form>
-            {% endfor %}
-            <button id="debt-trans-submit" onclick="AbortController">上了！</button>
-
+            <form id="add-user-form">
+                <input type="text" id="name" name="name" placeholder="user name">
+                <input type="submit" value="Add user">
+            </form>
         </div>
     </div>
 
+    <div id="pay-section">
+        <h2>Add transaction</h2>
+        <form id="pay-form">
+            <label for="from">From:</label><br>
+            <select id="from" name="from">
+                {% for user in from_users %}
+                    <option value="{{user}}">{{user}}</option>
+                {% endfor %}
+            </select><br>
+            <label for="to">To:</label><br>
+            <select id="to" name="to">
+                {% for user in to_users %}
+                    <option value="{{user}}">{{user}}</option>
+                {% endfor %}
+            </select><br>
+            <label for="amount">Amount:</label><br>
+            <input type="text" id="amount" name="amount" value=0><br>
+            <input type="submit" value="add transaction">
+        </form>
+    </div>
 </div>
-
 
 <hr>
 
@@ -214,33 +217,11 @@
 <hr>
 
 
-<div id="pay-section">
-    <h2>Add transaction</h2>
-    <form id="pay-form">
-        <label for="from">From:</label><br>
-        <select id="from" name="from">
-            {% for user in from_users %}
-                <option value="{{user}}">{{user}}</option>
-            {% endfor %}
-        </select><br>
-        <label for="to">To:</label><br>
-        <select id="to" name="to">
-            {% for user in to_users %}
-                <option value="{{user}}">{{user}}</option>
-            {% endfor %}
-        </select><br>
-        <label for="amount">Amount:</label><br>
-        <input type="text" id="amount" name="amount" value=0><br>
-        <input type="submit" value="add transaction">
-    </form>
-</div>
-
-
 <div id="sheet_viewer">
     <p>If no permission, request for the permission, then refresh</p>
     <a target="_blank" href="https://docs.google.com/spreadsheets/d/{{sheet_id}}/edit#gid=0">https://docs.google.com/spreadsheets/d/{{sheet_id}}/edit#gid=0</a>
     <iframe
-            src="https://docs.google.com/spreadsheets/d/{{sheet_id}}/edit?usp=sharing?&rm=minimal&single=true&widget=false;"
+            src="https://docs.google.com/spreadsheets/d/{{sheet_id}}/preview"
             height="100%"
             width="100%"
     ></iframe>
@@ -261,82 +242,13 @@
 
 
 <script>
-    function objectifyForm(formArray) {
-        //serialize data function
-        let returnArray = {};
-        for (var i = 0; i < formArray.length; i++){
-            returnArray[formArray[i]['name']] = formArray[i]['value'];
-        }
-        return returnArray;
-    }
 
-    function clearDebt(btn) {
-        let from = btn.getAttribute("data-from")
-        let to = btn.getAttribute("data-to")
-        let amount = btn.getAttribute("data-amount")
+    let js_value = {{ recommended_result|tojson }};
 
-        let xhr = new XMLHttpRequest();
-        let url = window.location.protocol + '//' + window.location.host;
-        xhr.open('POST','{{ url }}/pay')
-        xhr.setRequestHeader("Content-Type", "application/json");
-
-        //send the form data
-        xhr.send(JSON.stringify({"from": from, "to": to, "amount": amount}));
-        xhr.onreadystatechange = function() {
-            if (xhr.readyState === XMLHttpRequest.DONE) {
-                alert("Finished, page will be reloaded")
-                window.location.reload();
-            }
-        }
-    }
-
-    var form = document.getElementById('pay-form');
-    form.onsubmit = function(event){
-        let xhr = new XMLHttpRequest();
-        let formData = new FormData(form);
-
-        let url = window.location.protocol + '//' + window.location.host;
-        xhr.open('POST','{{ url }}/pay')
-
-        xhr.setRequestHeader("Content-Type", "application/json");
-
-        //send the form data
-        xhr.send(JSON.stringify(Object.fromEntries(formData)));
-
-        xhr.onreadystatechange = function() {
-            if (xhr.readyState === XMLHttpRequest.DONE) {
-                alert("Finished, page will be reloaded")
-                window.location.reload();
-            }
-        }
-        //Fail the onsubmit to avoid page refresh.
-        return false;
-    }
-
-
-    {#code from: https://www.w3schools.com/howto/howto_js_collapsible.asp#}
-    let coll = document.getElementsByClassName("collapsible");
-    let i;
-    for (i = 0; i < coll.length; i++) {
-        coll[i].addEventListener("click", function() {
-            this.classList.toggle("active");
-            let content = this.nextElementSibling;
-            if (content.id === "summary-section") {
-                if (content.style.display === "flex") {
-                    content.style.display = "none";
-                } else {
-                    content.style.display = "flex";
-                }
-            } else {
-
-                if (content.style.display === "block") {
-                    content.style.display = "none";
-                } else {
-                    content.style.display = "block";
-                }
-             }
-        });
-    }
-
+    console.log(js_value);
 </script>
+<script src="{{url_for('static', filename='func.js')}}"></script>
+<script src="{{url_for('static', filename='ui.js')}}"></script>
+
+
 </html>

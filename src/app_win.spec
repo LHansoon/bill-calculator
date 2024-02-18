@@ -5,12 +5,15 @@ block_cipher = None
 
 
 py_files = [
-    'app.py'
+    'app.py',
+    'Content.py',
+    'Processor.py'
 ]
 
 
 add_files = [
-    ('templates\\home.html', 'templates')
+    ('templates\\home.html', 'templates'),
+    ('static\\*.js', 'static')
 ]
 
 a = Analysis(
