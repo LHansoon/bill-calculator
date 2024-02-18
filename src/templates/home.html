@@ -4,7 +4,16 @@
     <meta charset="UTF-8">
     <title>home</title>
     <style>
-        .user_entry_line {
+        .placeholder {
+            background-color: greenyellow;
+            display: inline-block;
+            width: 100px;
+            text-align: center;
+        }
+        .sub_user_entry_container {
+            display: inline-block;
+        }
+        .user_entry_container {
             margin-block-start: 1em;
             margin-block-end: 1em;
         }
@@ -30,8 +39,12 @@
             flex-wrap: wrap;
         }
 
-        #major-content {
+        #major-container {
             width: 50%;
+        }
+
+        #major-container>div {
+            width: 100%;
         }
 
         #major-content-recommended {
@@ -92,22 +105,15 @@
 
 <div id="major-container">
     <div id="major-content">
-        <h2>现在呢就是这么个状况：</h2>
-{#        {% for key, value in recommended_result.items() %}#}
-{#            <p>#}
-{##}
-{#                {{key}}: {#}
-{#                {% for sub_key, sub_value in value.items() %}#}
-{#                    "{{sub_key}}": {{ sub_value }} <button class="clear_debt_btn" data-from="{{ key }}" data-to="{{ sub_key }}" data-amount="{{ sub_value }}" onclick="clearDebt(this)">还钱</button>#}
-{##}
-{#                {% endfor %}#}
-{#                }#}
-{##}
-{##}
-{#            </p>#}
-{#        {% endfor %}#}
-{#        <button onClick='window.location.reload();'>Refresh Page</button>#}
+
     </div>
+    <div>
+        <form onsubmit="add_user(event, this)">
+            <input type="text" id="name" name="name" placeholder="user name">
+            <input type="submit" value="Add user">
+        </form>
+    </div>
+
 
 </div>
 
