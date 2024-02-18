@@ -1,7 +1,6 @@
 import json
 import logging
 
-import pandas as pd
 from flask import Flask, render_template, request
 import decorators
 import time
@@ -22,9 +21,9 @@ global sheet_cache
 lock = RLock()
 
 
-def unique_dict_key(listA, listB):
-    result_list = list(listA.keys())
-    result_list.extend(list(listB.keys()))
+def unique_dict_key(list_a, list_b):
+    result_list = list(list_a.keys())
+    result_list.extend(list(list_b.keys()))
     result_list = list(set(result_list))
     return result_list
 
@@ -106,17 +105,17 @@ def process_pay():
 
 
 def get_sheet():
-    SHEET_ID = app.config.get("sheet_id")
+    sheet_id = app.config.get("sheet_id")
 
     scope = [
         'https://www.googleapis.com/auth/drive',
         'https://www.googleapis.com/auth/drive.file'
     ]
     file_name = app.config.get("cred_path")
-    creds = ServiceAccountCredentials.from_json_keyfile_name(file_name, scope)
-    client = gspread.authorize(creds)
+    cred = ServiceAccountCredentials.from_json_keyfile_name(file_name, scope)
+    client = gspread.authorize(cred)
 
-    sheet = client.open_by_key(SHEET_ID).sheet1
+    sheet = client.open_by_key(sheet_id).sheet1
     return sheet
 
 

@@ -45,8 +45,8 @@ def _routine(arrangements, user_balance, recommended_result):
     if summation > 0:
         del user_balance[max_minimum]
         user_balance[max_maximum] += max_minimum_value
-        # procedures.extend(build_transfer_base_on_transfer_order(arrangements[max_minimum], max_minimum, max_maximum, -max_minimim_value))
-        # print(f"{max_minimum} 转给 {max_maximum} {-max_minimim_value}刀")
+        # procedures.extend(build_transfer_base_on_transfer_order(arrangements[max_minimum], max_minimum, max_maximum, -max_minimum_value))
+        # print(f"{max_minimum} 转给 {max_maximum} {-max_minimum_value}刀")
 
         amount = -max_minimum_value
 
@@ -74,7 +74,7 @@ def _routine(arrangements, user_balance, recommended_result):
 def get_summary(user_statistics):
     total_summary = dict()
     current_month_summary = dict()
-    previouse_month_summary = dict()
+    previous_month_summary = dict()
     event_summary = dict()
 
     today = date.today()
@@ -91,14 +91,14 @@ def get_summary(user_statistics):
 
         total_summary[user] = user_df["amount"].sum()
         current_month_summary[user] = user_df_curr_month["amount"].sum()
-        previouse_month_summary[user] = user_df_last_month["amount"].sum()
+        previous_month_summary[user] = user_df_last_month["amount"].sum()
 
         if total_summary[user] == 0:
             del total_summary[user]
         if current_month_summary[user] == 0:
             del current_month_summary[user]
-        if previouse_month_summary[user] == 0:
-            del previouse_month_summary[user]
+        if previous_month_summary[user] == 0:
+            del previous_month_summary[user]
 
         user_tags = user_df["event_tag"].unique().tolist()
         user_tags = [str.strip(i) for i in user_tags]
@@ -109,7 +109,7 @@ def get_summary(user_statistics):
                 event_summary[tag] = dict()
             event_summary[tag][user] = user_df.loc[user_df["event_tag"] == tag]["amount"].sum()
 
-    return total_summary, current_month_summary, previouse_month_summary, event_summary
+    return total_summary, current_month_summary, previous_month_summary, event_summary
 
 
 def get_optimized(result, content):
@@ -192,7 +192,7 @@ class Processor:
                             try:
                                 share = float(share)
                             except ValueError:
-                                # 说句实话，这里如果真的有value error的话应该要promt一个提示。。像现在这样默认1这辈子都找不到哪里有问题。。
+                                # 说句实话，这里如果真的有value error的话应该要prompt一个提示。。像现在这样默认1这辈子都找不到哪里有问题。。
                                 pass
                         else:
                             share = 1
