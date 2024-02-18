@@ -15,27 +15,8 @@ def clean_zero_node(arrangement):
             new_arrangement[each][sub_each] = round(new_arrangement[each][sub_each], 2)
             if new_arrangement[each][sub_each] == 0:
                 del new_arrangement[each][sub_each]
-    return new_arrangement
-
-
-def simple_process(arrangement):
-    new_arrangement = arrangement.copy()
-    finished_user = []
-    for user in list(new_arrangement.keys()):
-        user_bill = new_arrangement[user]
-        for sub_user in user_bill.keys():
-            if sub_user not in finished_user and new_arrangement.get(sub_user) is not None:
-                user_need_to_pay = new_arrangement[user][sub_user]
-                sub_user_need_to_pay = new_arrangement[sub_user][user] if new_arrangement[sub_user].get(user) is not None else -1
-                if sub_user_need_to_pay != -1:
-                    if sub_user in list(user_bill.keys()):
-                        if user_need_to_pay <= sub_user_need_to_pay:
-                            new_arrangement[user][sub_user] = 0
-                            new_arrangement[sub_user][user] = sub_user_need_to_pay - user_need_to_pay
-                        else:
-                            new_arrangement[sub_user][user] = 0
-                            new_arrangement[user][sub_user] = user_need_to_pay - sub_user_need_to_pay
-        finished_user.append(user)
+                if not new_arrangement[each]:
+                    del new_arrangement[each]
     return new_arrangement
 
 
@@ -232,7 +213,7 @@ class Processor:
                     price_each_user = row["price"] * (1 + tax_rate) * user_share_percentage
 
                     if user != person_paid_for_it:
-                        result[person_paid_for_it][user] += price_each_user
+                        result[user][person_paid_for_it] += price_each_user
 
                     user_stat["date"].append(row["date"])
                     user_stat["user"].append(user)
@@ -243,42 +224,24 @@ class Processor:
                 from_who = row["from"]
                 to_who = row["to"]
                 how_much = -abs(row["price"])
-                result[from_who][to_who] -= how_much
+                result[to_who][from_who] -= how_much
             elif row["type"] == "debt_trans":
                 from_who = row["from"]
                 to_who = row["to"]
                 how_much = row["price"]
                 about_who = row["who"]
 
-                result[to_who][from_who] -= how_much
-                result[to_who][about_who] += how_much
-                result[from_who][about_who] -= how_much
+                result[from_who][to_who] -= how_much
+                result[about_who][to_who] += how_much
+                result[about_who][from_who] -= how_much
             elif row["type"] == "debt_adj":
                 from_who = row["from"]
                 to_who = row["to"]
                 how_much = row["price"]
-                result[to_who][from_who] += how_much
+                result[from_who][to_who] += how_much
 
-        # 最后把它变成谁给谁转钱
-        final_result = dict()
-        # init
-        for user in users:
-            final_result[user] = dict()
-
-        for key in list(result.keys()):
-            for user in list(result[key].keys()):
-                final_result[user][key] = result[key][user]
-
-        # deep process 为了避免你给我转十块我给你转十块的事情发生
-        final_result = simple_process(final_result)
-
-        # 去掉0
-        final_result = clean_zero_node(final_result)
-
-        # 那0都去掉了，就可能出现空的dict，也要去掉
-        for each in list(final_result.keys()):
-            if len(final_result[each]) == 0:
-                del final_result[each]
+        # 去掉0和empty node
+        final_result = clean_zero_node(result)
 
         stat_df = pd.DataFrame.from_dict(user_stat)
 
