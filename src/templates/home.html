@@ -43,14 +43,9 @@
             margin-block-end: 1em;
         }
 
-        #pay-section {
-            float: left;
-            width: 15%;
-        }
-
         #sheet_viewer {
-            float: right;
-            width: 85%;
+            {#float: left;#}
+            {#width: 85%;#}
             height: 500px;
         }
 
@@ -59,25 +54,19 @@
         /*    height: 300px;*/
         /*}*/
 
-        #major-container, #summary-section, #event-summary-section {
+        #main-container > div{
+            display: inline-block;
+            width: 49%;
+            vertical-align: top;
+        }
+
+        #summary-section, #event-summary-section {
             display: flex;
             flex-wrap: wrap;
         }
 
-        #major-container {
-            width: 50%;
-        }
-
-        #major-container>div {
+        #major-info > div {
             width: 100%;
-        }
-
-        #major-content-recommended {
-            width: 50%;
-        }
-
-        .debt-trans-row {
-            display: none;
         }
 
         .summary-block {
@@ -126,22 +115,42 @@
 
     </style>
 </head>
-<body>
+<body onload="reset_cursor()">
 
-<div id="major-container">
-    <div id="major-content">
+<div id="main-container">
+    <div id="major-info">
+        <div id="major-content">
 
+        </div>
+        <div>
+            <form id="add-user-form">
+                <input type="text" id="name" name="name" placeholder="user name">
+                <input type="submit" value="Add user">
+            </form>
+        </div>
     </div>
-    <div>
-        <form id="add-user-form">
-            <input type="text" id="name" name="name" placeholder="user name">
-            <input type="submit" value="Add user">
+
+    <div id="pay-section">
+        <h2>Add transaction</h2>
+        <form id="pay-form">
+            <label for="from">From:</label><br>
+            <select id="from" name="from">
+                {% for user in from_users %}
+                    <option value="{{user}}">{{user}}</option>
+                {% endfor %}
+            </select><br>
+            <label for="to">To:</label><br>
+            <select id="to" name="to">
+                {% for user in to_users %}
+                    <option value="{{user}}">{{user}}</option>
+                {% endfor %}
+            </select><br>
+            <label for="amount">Amount:</label><br>
+            <input type="text" id="amount" name="amount" value=0><br>
+            <input type="submit" value="add transaction">
         </form>
     </div>
-
-
 </div>
-
 
 <hr>
 
@@ -208,33 +217,11 @@
 <hr>
 
 
-<div id="pay-section">
-    <h2>Add transaction</h2>
-    <form id="pay-form">
-        <label for="from">From:</label><br>
-        <select id="from" name="from">
-            {% for user in from_users %}
-                <option value="{{user}}">{{user}}</option>
-            {% endfor %}
-        </select><br>
-        <label for="to">To:</label><br>
-        <select id="to" name="to">
-            {% for user in to_users %}
-                <option value="{{user}}">{{user}}</option>
-            {% endfor %}
-        </select><br>
-        <label for="amount">Amount:</label><br>
-        <input type="text" id="amount" name="amount" value=0><br>
-        <input type="submit" value="add transaction">
-    </form>
-</div>
-
-
 <div id="sheet_viewer">
     <p>If no permission, request for the permission, then refresh</p>
     <a target="_blank" href="https://docs.google.com/spreadsheets/d/{{sheet_id}}/edit#gid=0">https://docs.google.com/spreadsheets/d/{{sheet_id}}/edit#gid=0</a>
     <iframe
-            src="https://docs.google.com/spreadsheets/d/{{sheet_id}}/edit?usp=sharing?&rm=minimal&single=true&widget=false;"
+            src="https://docs.google.com/spreadsheets/d/{{sheet_id}}/preview"
             height="100%"
             width="100%"
     ></iframe>
