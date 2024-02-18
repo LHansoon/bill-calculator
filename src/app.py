@@ -71,7 +71,6 @@ def start_mission():
     to_users = list(set(to_users))
 
     result = render_template("home.html",
-                             major_content=result,
                              recommended_result=recommended_result,
                              from_users=from_users,
                              to_users=to_users,
