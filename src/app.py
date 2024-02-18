@@ -3,7 +3,6 @@ import logging
 
 from flask import Flask, render_template, request
 import decorators
-import time
 from datetime import datetime
 from threading import RLock
 import sys
@@ -38,26 +37,12 @@ def start_mission():
     sheet = get_sheet()
     sheet_content = Content(sheet.get_all_records())
 
-    st = time.time()
     processor = Processor.Processor()
     result, user_stat = processor.process(sheet_content)
-    et = time.time()
 
-    time_pass = et - st
-    app.logger.debug(time_pass)
-
-    st = time.time()
     recommended_result = Processor.get_optimized(result, sheet_content)
-    et = time.time()
-
-    time_pass = et - st
-    app.logger.debug(time_pass)
 
     summary, curr_month_summary, last_month_summary, event_summary = Processor.get_summary(user_stat)
-    et = time.time()
-
-    time_pass = et - st
-    app.logger.debug(time_pass)
 
     users = list()
     to_users = list()
@@ -120,6 +105,6 @@ def get_sheet():
 
 if __name__ == '__main__':
     args = sys.argv
-    app.logger.setLevel(logging.DEBUG)
+    app.logger.setLevel(logging.INFO)
     app.config.update(json.loads(open("config.json", encoding="utf-8").read()))
     app.run(host="0.0.0.0", port=app.config.get("port"), debug=True)
