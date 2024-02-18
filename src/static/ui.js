@@ -1,7 +1,6 @@
 // {#code from: https://www.w3schools.com/howto/howto_js_collapsible.asp#}
 let coll = document.getElementsByClassName("collapsible");
-let i;
-for (i = 0; i < coll.length; i++) {
+for (let i = 0; i < coll.length; i++) {
     coll[i].addEventListener("click", function() {
         this.classList.toggle("active");
         let content = this.nextElementSibling;
@@ -22,19 +21,35 @@ for (i = 0; i < coll.length; i++) {
     });
 }
 
+
+function append_loader(element) {
+    const loader = document.createElement("div")
+    loader.setAttribute("class", "loader")
+    let parent = element.parentElement;
+    parent.insertBefore(loader, element.nextSibling);
+}
+
+function remove_loader(element) {
+    let loaders = element.parentElement.getElementsByClassName("loader");
+    for (let i = 0; i < loaders.length; i++){
+        loaders[i].remove();
+    }
+}
+
+
 function populate_content(result) {
     document.getElementById("major-content").innerHTML = "<h2>现在呢就是这么个状况：</h2>";
     for (let user in result) {
         console.log(user);
         let sub_users = ""
         for (let sub_user in result[user]){
-            btn = `
+            let btn = `
                 <button class="clear_debt_btn" data-from="${user}" data-to="${sub_user}" data-amount="${result[user][sub_user]}" onclick="clearDebt(this)">还钱</button>
             `;
 
             let sub_user_amount = result[user][sub_user];
             sub_users += `
-                <a class="dragable" draggable="true" data-user="${sub_user}" data-amount="${sub_user_amount}">"${sub_user}": ${sub_user_amount} ${btn}</a>
+                <a class="draggable" draggable="true" data-user="${sub_user}" data-amount="${sub_user_amount}">"${sub_user}": ${sub_user_amount} ${btn}</a>
             `;
         }
 
@@ -92,17 +107,16 @@ function load_listeners(js_value) {
 
     let curr_been_dragged = null;
     let curr_been_dragged_parent = null;
-    let draggable = document.getElementsByClassName("dragable");
-    for (i = 0; i < draggable.length; i++) {
+    let draggable = document.getElementsByClassName("draggable");
+    for (let i = 0; i < draggable.length; i++) {
         draggable[i].addEventListener("dragstart", (event) => {
             curr_been_dragged = event.target;
             curr_been_dragged_parent = event.target.parentElement.parentElement;
         });
     }
 
-
     let dropzones = document.getElementsByClassName("dropzone");
-    for (i = 0; i < dropzones.length; i++) {
+    for (let i = 0; i < dropzones.length; i++) {
         dropzones[i].addEventListener("dragenter", (event) => {
             event.preventDefault();
             if (event.target.classList.contains("dropzone")) {

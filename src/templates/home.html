@@ -4,6 +4,31 @@
     <meta charset="UTF-8">
     <title>home</title>
     <style>
+        .loader {
+            vertical-align: middle;
+            display: inline-block;
+            border: 2px solid #f3f3f3;
+            border-radius: 50%;
+            border-top: 2px solid #3498db;
+            width: 12px;
+            height: 12px;
+            -webkit-animation: spin 0.5s linear infinite; /* Safari */
+            animation: spin 0.5s linear infinite;
+        }
+
+        /* Safari */
+        @-webkit-keyframes spin {
+            0% { -webkit-transform: rotate(0deg); }
+            100% { -webkit-transform: rotate(360deg); }
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+
+
         .placeholder {
             background-color: greenyellow;
             display: inline-block;
@@ -108,7 +133,7 @@
 
     </div>
     <div>
-        <form onsubmit="add_user(event, this)">
+        <form id="add-user-form">
             <input type="text" id="name" name="name" placeholder="user name">
             <input type="submit" value="Add user">
         </form>
