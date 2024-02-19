@@ -7,7 +7,8 @@ block_cipher = None
 py_files = [
     'app.py',
     'Content.py',
-    'Processor.py'
+    'Processor.py',
+    'Chat.py'
 ]
 
 
