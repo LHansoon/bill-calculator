@@ -1,5 +1,6 @@
 import json
 import logging
+import html
 
 from flask import Flask, render_template, request
 import decorators
@@ -38,8 +39,8 @@ def post_chat():
     message = json_request.get("message")
 
     if name is not None and message is not None:
-        name = name.strip()
-        message = message.strip()
+        name = html.escape(name.strip())
+        message = html.escape(message.strip())
 
         ts = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
 

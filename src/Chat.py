@@ -57,5 +57,5 @@ def get_posts():
             history = sorted(history, key=itemgetter("ts"))
             return history
 
-    return dict()
+    return list()
 
