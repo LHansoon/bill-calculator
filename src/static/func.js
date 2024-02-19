@@ -98,13 +98,28 @@ function update_chat_box(message) {
     chat_box.scrollTop = chat_box.scrollHeight;
 }
 
+let cache_json = "";
+function poll_content() {
+    fetch("/get-chat", {method: "GET"})
+        .then(response => {
+            if (response.status === 200){
+                return response.json();
+            } else {
+                return null
+            }
+        })
+        .then(data => {
+            let response_message = data["message"];
+            if (cache_json !== response_message){
+                cache_json = response_message;
+                update_chat_box(response_message);
+            }
+        });
+}
+
 
 const pollingInterval = 1000;
 const pollTimer = setInterval(() => {
-    fetch("/get-chat", {method: "GET"})
-        .then(response => response.json())
-        .then(data => {
-            console.log(data);
-            update_chat_box(data["message"]);
-        });
+    poll_content();
 }, pollingInterval);
+poll_content();
