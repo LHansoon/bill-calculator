@@ -49,6 +49,14 @@ def post_chat():
         return {"result": False, "message": "name or message is empty."}
 
 
+@app.route("/get-chat", methods=["GET"])
+def get_chat():
+    chats = Chat.get_posts()
+    chats = json.dumps(chats)
+
+    return {"result": True, "message": chats}, 200
+
+
 @app.route("/", methods=["GET"])
 def start_mission():
     sheet = get_sheet()

@@ -43,17 +43,19 @@ def process_post(ts, name, message):
 
 
 def get_posts():
-    path = current_app.config.chat_path
+    try:
+        path = current_app.config.chat_path
+    except AttributeError as e:
+        path = "data/chat.json"
 
-    if path is not None:
+    if os.path.isfile(path):
         lock.acquire()
         history_json = open(path, "r").read()
         lock.release()
-        print(history_json)
+        if not history_json == "":
+            history = json.loads(history_json)
+            history = sorted(history, key=itemgetter("ts"))
+            return history
 
-        history = json.loads(history_json)
-        history = sorted(history, key=itemgetter("ts"))
+    return dict()
 
-        return history
-    else:
-        return dict()

@@ -83,3 +83,27 @@ chat_form.onsubmit = function (event) {
         }
     }
 }
+
+
+function update_chat_box(message) {
+    message = JSON.parse(message);
+    let chat_box = document.getElementById("chat");
+    chat_box.innerHTML = "";
+    for (let i = 0; i < message.length; i++){
+        let chat_entry = `
+            <div class="chat-entry"><a class="chat-ts">${message[i]["ts"]}</a> == <a class="chat-name">${message[i]["name"]}</a>: <a class="chat-message">${message[i]["message"]}</a></div>
+        `;
+        chat_box.innerHTML += chat_entry;
+    }
+}
+
+
+const pollingInterval = 1000;
+const pollTimer = setInterval(() => {
+    fetch("/get-chat", {method: "GET"})
+        .then(response => response.json())
+        .then(data => {
+            console.log(data);
+            update_chat_box(data["message"]);
+        });
+}, pollingInterval);
