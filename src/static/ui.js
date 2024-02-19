@@ -149,7 +149,7 @@ function load_listeners(js_value) {
                 let source_from = curr_been_dragged_parent.getAttribute("data-user");
                 let source_to = target_to;
 
-                if (source_to === target_from) {
+                if (source_to === target_from || source_from === target_from) {
                     alert("你想干嘛");
                 } else {
                     if (js_value[target_from][source_to] != null) {
