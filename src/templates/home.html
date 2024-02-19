@@ -4,6 +4,22 @@
     <meta charset="UTF-8">
     <title>home</title>
     <style>
+        #billboard > .chats {
+            display: block;
+            width: 100%;
+            height: 220px;
+            border-style: solid;
+            margin-bottom: 10px;
+        }
+
+        #chat-post-form > #chat-name{
+            width: 6em;
+        }
+        #chat-post-form > #chat-message{
+            width: 30em;
+        }
+
+
         .loader {
             vertical-align: middle;
             display: inline-block;
@@ -48,11 +64,6 @@
             {#width: 85%;#}
             height: 500px;
         }
-
-        /*#hover_view {*/
-        /*    background-color: black;*/
-        /*    height: 300px;*/
-        /*}*/
 
         #main-container > div{
             display: inline-block;
@@ -130,25 +141,39 @@
         </div>
     </div>
 
-    <div id="pay-section">
-        <h2>Add transaction</h2>
-        <form id="pay-form">
-            <label for="from">From:</label><br>
-            <select id="from" name="from">
-                {% for user in from_users %}
-                    <option value="{{user}}">{{user}}</option>
-                {% endfor %}
-            </select><br>
-            <label for="to">To:</label><br>
-            <select id="to" name="to">
-                {% for user in to_users %}
-                    <option value="{{user}}">{{user}}</option>
-                {% endfor %}
-            </select><br>
-            <label for="amount">Amount:</label><br>
-            <input type="text" id="amount" name="amount" value=0><br>
-            <input type="submit" value="add transaction">
-        </form>
+    <div id="right-section">
+        <div id="pay-section">
+            <h2>Add transaction</h2>
+            <form id="pay-form">
+                <label for="from">From:</label><br>
+                <select id="from" name="from">
+                    {% for user in from_users %}
+                        <option value="{{user}}">{{user}}</option>
+                    {% endfor %}
+                </select><br>
+                <label for="to">To:</label><br>
+                <select id="to" name="to">
+                    {% for user in to_users %}
+                        <option value="{{user}}">{{user}}</option>
+                    {% endfor %}
+                </select><br>
+                <label for="amount">Amount:</label><br>
+                <input type="text" id="amount" name="amount" value=0><br>
+                <input type="submit" value="add transaction">
+            </form>
+        </div>
+        <hr>
+        <div id="billboard">
+            <div class="chats" id="chat">
+
+            </div>
+
+            <form id="chat-post-form">
+                <input type="text" id="chat-name" name="name" placeholder="user name">
+                <input type="text" id="chat-message" name="message" placeholder="message">
+                <input type="submit" value="post">
+            </form>
+        </div>
     </div>
 </div>
 
@@ -227,15 +252,6 @@
     ></iframe>
 
 </div>
-
-
-<div id="hover_view">
-
-
-</div>
-
-
-
 
 
 </body>
