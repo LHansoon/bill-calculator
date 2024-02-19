@@ -35,19 +35,19 @@ def process_mission():
 @app.route("/chat-post", methods=["POST"])
 def post_chat():
     json_request = request.json
-    name = json_request.get("name")
-    message = json_request.get("message")
+    name = json_request.get("name").strip()
+    message = json_request.get("message").strip()
 
-    if name is not None and message is not None:
-        name = html.escape(name.strip())
-        message = html.escape(message.strip())
+    if name != "" and message != "":
+        name = html.escape(name)
+        message = html.escape(message)
 
         ts = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
 
         Chat.process_post(ts, name, message)
-        return {"result": True, "message": "Success"}
+        return {"result": True, "message": "Success"}, 200
     else:
-        return {"result": False, "message": "name or message is empty."}
+        return {"result": False, "message": "name or message is empty."}, 400
 
 
 @app.route("/get-chat", methods=["GET"])
