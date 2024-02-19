@@ -95,6 +95,7 @@ function update_chat_box(message) {
         `;
         chat_box.innerHTML += chat_entry;
     }
+    chat_box.scrollTop = chat_box.scrollHeight;
 }
 
 
