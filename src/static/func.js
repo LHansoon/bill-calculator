@@ -78,7 +78,7 @@ chat_form.onsubmit = function (event) {
             if (this.status === 200){
                 chat_message_box.value = "";
             } else {
-                alert(`请求失败了，code=${this.status}, message=${this.statusText}`);
+                alert(`请求失败了，code=${this.status}, message=${this.responseText}`);
             }
         }
     }
