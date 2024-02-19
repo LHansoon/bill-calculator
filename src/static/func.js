@@ -51,3 +51,35 @@ let add_user_form = document.getElementById("add-user-form");
 add_user_form.onsubmit = function (event){
     add_user(event, add_user_form);
 }
+
+
+let chat_form = document.getElementById("chat-post-form");
+chat_form.onsubmit = function (event) {
+    event.preventDefault();
+
+    let chat_btn = document.getElementById("chat-btn");
+    let chat_message_box = document.getElementById("chat-message");
+    append_loader(chat_btn);
+
+    chat_btn.disabled = true;
+    let xhr = new XMLHttpRequest();
+    let formData = new FormData(chat_form);
+
+    xhr.open('POST','/chat-post')
+    xhr.setRequestHeader("Content-Type", "application/json");
+
+    //send the form data
+    xhr.send(JSON.stringify(Object.fromEntries(formData)));
+
+    xhr.onreadystatechange = function() {
+        if (this.readyState === 4) {
+            chat_btn.disabled = false;
+            remove_loader(chat_btn);
+            if (this.status === 200){
+                chat_message_box.value = "";
+            } else {
+                alert(`请求失败了，code=${this.status}, message=${this.statusText}`);
+            }
+        }
+    }
+}

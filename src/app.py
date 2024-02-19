@@ -4,12 +4,12 @@ import logging
 from flask import Flask, render_template, request
 import decorators
 from datetime import datetime
-from threading import RLock
 import sys
 import gspread
 from oauth2client.service_account import ServiceAccountCredentials
 
 import Processor
+import Chat
 from Content import Content
 
 app = Flask(__name__, template_folder="templates")
@@ -17,7 +17,6 @@ logger = app.logger
 
 global last_update_ts
 global sheet_cache
-lock = RLock()
 
 
 def unique_dict_key(list_a, list_b):
@@ -32,6 +31,24 @@ def process_mission():
     pass
 
 
+@app.route("/chat-post", methods=["POST"])
+def post_chat():
+    json_request = request.json
+    name = json_request.get("name")
+    message = json_request.get("message")
+
+    if name is not None and message is not None:
+        name = name.strip()
+        message = message.strip()
+
+        ts = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+
+        Chat.process_post(ts, name, message)
+        return {"result": True, "message": "Success"}
+    else:
+        return {"result": False, "message": "name or message is empty."}
+
+
 @app.route("/", methods=["GET"])
 def start_mission():
     sheet = get_sheet()
@@ -41,7 +58,6 @@ def start_mission():
     result, user_stat = processor.process(sheet_content)
 
     recommended_result = Processor.get_optimized(result, sheet_content)
-
     summary, curr_month_summary, last_month_summary, event_summary = Processor.get_summary(user_stat)
 
     users = list()
@@ -63,9 +79,7 @@ def start_mission():
                              curr_month_summary=curr_month_summary,
                              last_month_summary=last_month_summary,
                              event_summary=event_summary,
-                             sheet_id=app.config.get("sheet_id"),
-                             host=f"{request.remote_addr}",
-                             port=app.config.get("port"))
+                             sheet_id=app.config.get("sheet_id"))
     return result, 200
 
 
@@ -85,7 +99,7 @@ def process_pay():
     sheet = get_sheet()
     sheet.append_row(result, table_range="A1:H1")
 
-    return "mission processed", 200
+    return {"result": True, "message": "Success"}, 200
 
 
 def get_sheet():
