@@ -26,9 +26,21 @@ function clearDebt(btn) {
 }
 
 let form = document.getElementById('pay-form');
-form.onsubmit = function(event){
+let form_submit_btn = document.getElementById("pay_button")
+form_submit_btn.onclick = function(event){
     let xhr = new XMLHttpRequest();
     let formData = new FormData(form);
+    let formDataDict = Object.fromEntries(formData);
+    let from = formDataDict["from"];
+    let to = formDataDict["to"];
+    let amount = Number(formDataDict["amount"]);
+
+    if (amount === 0){
+        alert("no 0");
+        return;
+    }
+
+    append_loader(form_submit_btn);
 
     xhr.open('POST','/pay')
 
@@ -38,9 +50,16 @@ form.onsubmit = function(event){
     xhr.send(JSON.stringify(Object.fromEntries(formData)));
 
     xhr.onreadystatechange = function() {
-        if (xhr.readyState === XMLHttpRequest.DONE) {
-            alert("Finished, page will be reloaded")
-            window.location.reload();
+        if (this.readyState === 4) {
+            remove_loader(form_submit_btn);
+            if (this.status === 200){
+                populate_content(js_value);
+                form.reset();
+                append_pay_warning(form_submit_btn);
+            } else {
+                form_submit_btn.disabled = false;
+                alert(`请求失败了，code=${this.status}, message=${this.statusText}`);
+            }
         }
     }
     //Fail the onsubmit to avoid page refresh.

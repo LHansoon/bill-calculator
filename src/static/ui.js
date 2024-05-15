@@ -21,12 +21,30 @@ for (let i = 0; i < coll.length; i++) {
     });
 }
 
-
+// append spinning loading circle
 function append_loader(element) {
     const loader = document.createElement("div")
     loader.setAttribute("class", "loader")
     let parent = element.parentElement;
     parent.insertBefore(loader, element.nextSibling);
+}
+
+
+// the right side warning text after payment
+function append_pay_warning(element) {
+    let warning = document.getElementById("pay_warning");
+    if(warning === null){
+        warning = document.createElement("a");
+        warning.setAttribute("id", "pay_warning");
+        warning.textContent = "success🏅, please note no update on display.";
+        warning.style.color = '#' + Math.floor(Math.random() * 16777215).toString(16);
+
+        let parent = element.parentElement;
+        parent.insertBefore(warning, element.nextSibling);
+    } else {
+        warning.style.color = '#' + Math.floor(Math.random() * 16777215).toString(16);
+    }
+
 }
 
 function remove_loader(element) {
