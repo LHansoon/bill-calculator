@@ -133,8 +133,10 @@
         }
 
     </style>
+{#    <link rel="stylesheet" type="text/css" href="https://cdn.jsdelivr.net/npm/handsontable/dist/handsontable.full.min.css">#}
+{#    <script src="https://cdn.jsdelivr.net/npm/handsontable/dist/handsontable.full.min.js"></script>#}
+
 </head>
-<body onload="reset_cursor()">
 
 <div id="main-container">
     <div id="major-info">
@@ -167,7 +169,7 @@
                 </select><br>
                 <label for="amount">Amount:</label><br>
                 <input type="text" id="amount" name="amount" value=0><br>
-                <input type="submit" value="add transaction">
+                <button id="pay_button">add transaction</button>
             </form>
         </div>
         <hr>
@@ -250,16 +252,7 @@
 <hr>
 
 
-<div id="sheet_viewer">
-    <p>If no permission, request for the permission, then refresh</p>
-    <a target="_blank" href="https://docs.google.com/spreadsheets/d/{{sheet_id}}/edit#gid=0">https://docs.google.com/spreadsheets/d/{{sheet_id}}/edit#gid=0</a>
-    <iframe
-            src="https://docs.google.com/spreadsheets/d/{{sheet_id}}/preview"
-            height="100%"
-            width="100%"
-    ></iframe>
-
-</div>
+{#<div id="example"></div>#}
 
 
 </body>
@@ -272,6 +265,7 @@
     console.log(js_value);
 </script>
 <script src="{{url_for('static', filename='func.js')}}"></script>
+{#<script src="{{url_for('static', filename='sheet.js')}}"></script>#}
 <script src="{{url_for('static', filename='ui.js')}}"></script>
 
 
