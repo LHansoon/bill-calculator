@@ -52,6 +52,16 @@
         }
 
 
+        .error-banner {
+            width: 100%;
+            background-color: #FF0000; /* Beijing red background */
+            color: #FFFFFF; /* White text */
+            text-align: center;
+            padding: 10px 0;
+            margin-bottom: 10px; /* Adds space between banners */
+            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2); /* Optional: adds a small shadow for depth */
+            position: relative;
+        }
 
         .placeholder {
             background-color: greenyellow;
@@ -137,6 +147,19 @@
 {#    <script src="https://cdn.jsdelivr.net/npm/handsontable/dist/handsontable.full.min.js"></script>#}
 
 </head>
+
+{% if missing_column_dict %}
+    <div class="error-banner">
+        {% for key, value in missing_column_dict.items() %}
+            <p>
+                missing col on line {{key}}: {{ value }}
+            </p>
+        {% endfor %}
+    </div>
+{% endif %}
+
+
+
 
 <div id="main-container">
     <div id="major-info">

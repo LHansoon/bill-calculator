@@ -146,6 +146,8 @@ class Processor:
         self.regex_search_user_share_pair = re.compile(r"([^\r\n\t\f\v,()]+)(?:\((\d*.?\d*)\))?")
 
     def process(self, content: Content):
+        CONDITION_CHECK_COLS = ["from", "to", "price", "who", "type"]
+
         stat_columns = ["date", "user", "amount", "event_tag"]
         user_stat = dict()
         for column in stat_columns:
@@ -153,6 +155,8 @@ class Processor:
 
         df = content.get_df()
         users = content.get_users()
+
+        missing_column_dict = dict()
 
         result = dict()
 
@@ -168,10 +172,23 @@ class Processor:
                 result[user][sub_user] = 0
 
         # raw process
-        for row in df.iterrows():
-            row = row[1]
+        for row_num, row in df.iterrows():
+            # since row_num start with 0, and the actual line 0 is the title row
+            row_num += 2
 
-            if row["type"] == "buy":
+            if row["type"] == "":
+                missing_column_dict[row_num] = ["type"]
+
+            elif row["type"] == "buy":
+                missing_col_list = list()
+                for col in CONDITION_CHECK_COLS:
+                    if row[col] == "":
+                        missing_col_list.append(col)
+
+                if len(missing_col_list) != 0:
+                    missing_column_dict[row_num] = missing_col_list
+                    continue
+
                 person_paid_for_it = row["from"]
                 who = row["who"]
                 tax_flag = row["tax_flg"]
@@ -249,4 +266,4 @@ class Processor:
 
         stat_df = pd.DataFrame.from_dict(user_stat)
 
-        return final_result, stat_df
+        return final_result, stat_df, missing_column_dict
