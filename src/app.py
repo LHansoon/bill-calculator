@@ -64,7 +64,7 @@ def start_mission():
     sheet_content = Content(sheet.get_all_records())
 
     processor = Processor.Processor()
-    result, user_stat = processor.process(sheet_content)
+    result, user_stat, missing_column_dict = processor.process(sheet_content)
 
     recommended_result = Processor.get_optimized(result, sheet_content)
     summary, curr_month_summary, last_month_summary, event_summary = Processor.get_summary(user_stat)
@@ -88,7 +88,8 @@ def start_mission():
                              curr_month_summary=curr_month_summary,
                              last_month_summary=last_month_summary,
                              event_summary=event_summary,
-                             sheet_id=app.config.get("sheet_id"))
+                             sheet_id=app.config.get("sheet_id"),
+                             missing_column_dict=missing_column_dict)
     return result, 200
 
 
