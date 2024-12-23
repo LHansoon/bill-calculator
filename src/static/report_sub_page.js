@@ -26,22 +26,46 @@ function toQueryString(params) {
         .join('&');
 }
 
+let translation = {
+    "self_purchase": "Pay for self",
+    "others_purchase": "Pay for others",
+    "total_purchase": "Total pay by user",
+    "total_expenditure": "Total spending"
+};
+
 function generate_report(report_data) {
     report_container_element.innerHTML = "";
+    let columns = ["self_purchase", "others_purchase", "total_purchase", "total_expenditure"];
+    let total_expenditure_index = "total_expenditure";
 
     for(let user_name in report_data) {
         let user_report_detail = "";
+        let user_expenditure_sum = 0;
+        let user_section_sum = [];
 
-        for (let key2 in report_data[user_name]) {
-            user_report_detail += `
+        for (category in report_data[user_name][total_expenditure_index]){
+            user_expenditure_sum += report_data[user_name][total_expenditure_index][category];
+        }
+        user_expenditure_sum = Math.round(user_expenditure_sum * 100) / 100;
+
+        for (let i in columns) {
+            let sum_value = 0;
+            let user_report_detail_body = "";
+            for (let category in report_data[user_name][columns[i]]) {
+                let value = report_data[user_name][columns[i]][category];
+                user_report_detail_body += `<p> ${category}: ${ value } </p>`;
+                sum_value += value;
+            }
+            sum_value = Math.round(sum_value * 100) / 100;
+
+            let user_report_detail_header = `
                 <div class="row-sub-category">
-                    <p> ${key2}: </p>
+                    <p> ${translation[columns[i]]}: ${sum_value}</p>
                     <hr>
             `;
 
-            for (let category in report_data[user_name][key2]) {
-                user_report_detail += `<p> ${category}: ${report_data[user_name][key2][category]} </p>`;
-            }
+            user_report_detail += user_report_detail_header;
+            user_report_detail += user_report_detail_body;
 
             user_report_detail += `</div>`;
         }
@@ -49,7 +73,7 @@ function generate_report(report_data) {
         report_container_element.innerHTML += `
             <div class="row"  data-user-name="${user_name}">
                 <div class="row-main">
-                    <span>${user_name}: ${js_total_summary[user_name]}</span>
+                    <span>${user_name}: ${user_expenditure_sum}</span>
                     <button class="expand-report-detail-btn">expand</button>
                 </div>
                 <div class="row-sub">
