@@ -71,27 +71,58 @@ def _routine(arrangements, user_balance, recommended_result):
     _routine(arrangements, user_balance, recommended_result)
 
 
+def get_user_report(user_statistics, start_ts, end_ts):
+    summary = {}
+    users = user_statistics["user"].unique()
+    user_statistics = user_statistics.loc[(user_statistics['date'] >= start_ts) & (user_statistics['date'] <= end_ts)]
+    user_statistics_self = user_statistics.loc[user_statistics["paid_by"] == user_statistics["user"]]
+    user_statistics_other = user_statistics.loc[user_statistics["paid_by"] != user_statistics["user"]]
+
+    process_list = [user_statistics, user_statistics_self, user_statistics_other]
+    grouped_data = []
+
+    for each_statistic in process_list:
+        user_expenditure = each_statistic.groupby(["paid_by", "category"])["amount"].sum().reset_index()
+        result_dict = {paid_by: dict(zip(user_expenditure[user_expenditure["paid_by"] == paid_by]["category"],
+                                      round(user_expenditure[user_expenditure["paid_by"] == paid_by]["amount"], 2)))
+                       for paid_by in user_expenditure["paid_by"].unique()}
+        grouped_data.append(result_dict)
+
+    for user in users:
+        summary[user] = {}
+        summary[user]["Total"] = grouped_data[0].get(user)
+        summary[user]["Purchase for self"] = grouped_data[1].get(user)
+        summary[user]["Purchase for others"] = grouped_data[2].get(user)
+
+    return summary
+
+
 def get_summary(user_statistics):
     total_summary = dict()
     current_month_summary = dict()
     previous_month_summary = dict()
     event_summary = dict()
+    past_30_days_summary = dict()
 
     today = date.today()
+    thirty_days_ago = today - timedelta(days=30)
     curr_month_start = today.replace(day=1)
     last_month_end = curr_month_start - timedelta(days=1)
     last_month_start = last_month_end.replace(day=1)
 
+
     users = user_statistics["user"].unique()
     for user in users:
         user_df = user_statistics.loc[user_statistics["user"] == user]
-        user_df_last_month = user_df.loc[
-            (user_df['date'] >= last_month_start) & (user_df['date'] <= last_month_end)]
+        user_df_last_month = user_df.loc[(user_df['date'] >= last_month_start) & (user_df['date'] <= last_month_end)]
         user_df_curr_month = user_df.loc[(user_df['date'] >= curr_month_start) & (user_df['date'] <= today)]
+
+        user_df_past_30_days = user_df.loc[(user_df['date'] >= thirty_days_ago) & (user_df['date'] <= today)]
 
         total_summary[user] = user_df["amount"].sum()
         current_month_summary[user] = user_df_curr_month["amount"].sum()
         previous_month_summary[user] = user_df_last_month["amount"].sum()
+        past_30_days_summary[user] = user_df_past_30_days["amount"].sum()
 
         if total_summary[user] == 0:
             del total_summary[user]
@@ -99,6 +130,8 @@ def get_summary(user_statistics):
             del current_month_summary[user]
         if previous_month_summary[user] == 0:
             del previous_month_summary[user]
+        if past_30_days_summary == 0:
+            del past_30_days_summary[user]
 
         user_tags = user_df["event_tag"].unique().tolist()
         user_tags = [str.strip(i) for i in user_tags]
@@ -109,7 +142,7 @@ def get_summary(user_statistics):
                 event_summary[tag] = dict()
             event_summary[tag][user] = user_df.loc[user_df["event_tag"] == tag]["amount"].sum()
 
-    return total_summary, current_month_summary, previous_month_summary, event_summary
+    return total_summary, current_month_summary, previous_month_summary, event_summary, past_30_days_summary
 
 
 def get_optimized(result, content):
@@ -150,6 +183,9 @@ class Processor:
 
         stat_columns = ["date", "user", "amount", "event_tag"]
         user_stat = dict()
+        user_stat["paid_by"] = []
+        user_stat["merchant"] = []
+        user_stat["category"] = []
         for column in stat_columns:
             user_stat[column] = list()
 
@@ -237,9 +273,12 @@ class Processor:
                             print(3)
 
                     user_stat["date"].append(row["date"])
+                    user_stat["paid_by"].append(row["from"])
+                    user_stat["merchant"].append(row["to"])
                     user_stat["user"].append(user)
                     user_stat["amount"].append(price_each_user)
                     user_stat["event_tag"].append(row["tag"])
+                    user_stat["category"].append(row["category"])
 
             elif row["type"] == "pay":
                 from_who = row["from"]

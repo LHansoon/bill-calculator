@@ -3,148 +3,9 @@
 <head>
     <meta charset="UTF-8">
     <title>home</title>
-    <style>
-        #billboard > .chats {
-            overflow-y: scroll;
-            display: block;
-            width: 100%;
-            height: 220px;
-            border-style: solid;
-            margin-bottom: 10px;
-        }
+    <link rel="stylesheet" href="{{url_for('static', filename='css/report_sub_page.css')}}">
+    <link rel="stylesheet" href="{{url_for('static', filename='css/base.css')}}">
 
-        #chat-post-form > #chat-name{
-            width: 6em;
-        }
-        #chat-post-form > #chat-message{
-            width: 30em;
-        }
-
-        .chat-entry > .chat-ts {
-            font-style: italic;
-        }
-        .chat-entry > .chat-name {
-            color: blue;
-            font-weight: bold;
-        }
-
-        .loader {
-            vertical-align: middle;
-            display: inline-block;
-            border: 2px solid #f3f3f3;
-            border-radius: 50%;
-            border-top: 2px solid #3498db;
-            width: 12px;
-            height: 12px;
-            -webkit-animation: spin 0.5s linear infinite; /* Safari */
-            animation: spin 0.5s linear infinite;
-        }
-
-        /* Safari */
-        @-webkit-keyframes spin {
-            0% { -webkit-transform: rotate(0deg); }
-            100% { -webkit-transform: rotate(360deg); }
-        }
-
-        @keyframes spin {
-            0% { transform: rotate(0deg); }
-            100% { transform: rotate(360deg); }
-        }
-
-
-        .error-banner {
-            width: 100%;
-            background-color: #FF0000; /* Beijing red background */
-            color: #FFFFFF; /* White text */
-            text-align: center;
-            padding: 10px 0;
-            margin-bottom: 10px; /* Adds space between banners */
-            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2); /* Optional: adds a small shadow for depth */
-            position: relative;
-        }
-
-        .placeholder {
-            background-color: greenyellow;
-            display: inline-block;
-            width: 100px;
-            text-align: center;
-        }
-        .sub_user_entry_container {
-            display: inline-block;
-        }
-        .user_entry_container {
-            margin-block-start: 1em;
-            margin-block-end: 1em;
-        }
-
-        #sheet_viewer {
-            {#float: left;#}
-            {#width: 85%;#}
-            height: 500px;
-        }
-
-        #main-container > div{
-            display: inline-block;
-            width: 49%;
-            vertical-align: top;
-        }
-
-        #summary-section, #event-summary-section {
-            display: flex;
-            flex-wrap: wrap;
-        }
-
-        #major-info > div {
-            width: 100%;
-        }
-
-        .summary-block {
-            width: 30%;
-        }
-
-        .event-summary-block {
-            width: 15%;
-        }
-
-        #summary-section h2 {
-            width: 100%;
-        }
-
-        {#CSS from: https://www.w3schools.com/howto/howto_js_collapsible.asp#}
-        .collapsible {
-              background-color: #777;
-              color: white;
-              cursor: pointer;
-              padding: 10px;
-              width: 100%;
-              border: none;
-              text-align: left;
-              outline: none;
-              font-size: 15px;
-        }
-
-        .collapsible p {
-            margin: 0;
-        }
-
-        .active, .collapsible:hover {
-            background-color: #555;
-        }
-
-        .content {
-              padding: 0 18px;
-              display: none;
-              overflow: hidden;
-              background-color: #f1f1f1;
-        }
-
-        .debug {
-            display: none;
-        }
-
-    </style>
-{#    <link rel="stylesheet" type="text/css" href="https://cdn.jsdelivr.net/npm/handsontable/dist/handsontable.full.min.css">#}
-{#    <script src="https://cdn.jsdelivr.net/npm/handsontable/dist/handsontable.full.min.js"></script>#}
 
 </head>
 
@@ -159,6 +20,21 @@
 {% endif %}
 
 
+<div class="overlay" id="report-overlay">
+    <div class="modal">
+        <div class="row-main">
+            <span>
+                <input type="number" id="year-input" name="year" min="2000" max="2100" value="2024" required>
+                <button onclick="refreshModal()">Refresh</button>
+            </span>
+            <button class="close-btn" onclick="closeModal()">Close</button>
+        </div>
+
+        <div id="email-list-container">
+
+        </div>
+    </div>
+</div>
 
 
 <div id="main-container">
@@ -171,6 +47,10 @@
                 <input type="text" id="name" name="name" placeholder="user name">
                 <input type="submit" value="Add user">
             </form>
+        </div>
+        <hr>
+        <div>
+            <button class="open-btn" onclick="openModal()">Annual Report</button>
         </div>
     </div>
 
@@ -212,8 +92,8 @@
 
 <hr>
 
-<h2 class="collapsible">Summary</h2>
-<div id="summary-section" style="display: none">
+<h2 class="collapsible summary-btn">Summary</h2>
+<div class="collapsible-container" style="display: none">
     <div class="summary-block">
         <h3>Current month：</h3>
         {% for key, value in curr_month_summary.items() %}
@@ -256,7 +136,7 @@
 
         <div class="event-summary-block">
             {#collaps from: https://www.w3schools.com/howto/howto_js_collapsible.asp#}
-            <button type="button" class="collapsible">{{ key }} <p style="font-style: italic">Total: {{ ns.sum_value | round(2) }}</p></button>
+            <button type="button" class="collapsible summary-btn">{{ key }} <p style="font-style: italic">Total: {{ ns.sum_value | round(2) }}</p></button>
             <div class="content">
                 {% for key, value in value.items() %}
                     <p>
@@ -297,12 +177,15 @@
 <script>
 
     let js_value = {{ recommended_result|tojson }};
+    let js_report_value = {{ report_value|tojson }};
+    let js_total_summary = {{ summary|tojson }};
+    let js_emails = {{ emails|tojson }};
 
     console.log(js_value);
 </script>
 <script src="{{url_for('static', filename='func.js')}}"></script>
-{#<script src="{{url_for('static', filename='sheet.js')}}"></script>#}
 <script src="{{url_for('static', filename='ui.js')}}"></script>
+<script src="{{url_for('static', filename='report_sub_page.js')}}"></script>
 
 
 </html>
