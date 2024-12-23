@@ -1,0 +1,42 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+</head>
+<body>
+    <button class="open-btn" onclick="openModal()">Open Modal</button>
+
+    <!-- Overlay and Modal -->
+    <div class="overlay" id="overlay">
+        <div class="modal">
+            <div class="row">
+                <span>Name 1</span>
+                <button class="close-btn" onclick="closeModal()">Close</button>
+            </div>
+            <div class="row">
+                <span>Name 1</span>
+                <button>Action</button>
+            </div>
+            <div class="row">
+                <span>Name 2</span>
+                <button>Action</button>
+            </div>
+            <div class="row">
+                <span>Name 3</span>
+                <button>Action</button>
+            </div>
+            <!-- Add more rows as needed -->
+        </div>
+    </div>
+
+    <script>
+        function openModal() {
+            document.getElementById("overlay").style.display = "flex";
+        }
+
+        function closeModal() {
+            document.getElementById("overlay").style.display = "none";
+        }
+    </script>
+</body>
+</html>
