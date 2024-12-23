@@ -73,8 +73,8 @@ def _routine(arrangements, user_balance, recommended_result):
 
 def get_user_report(user_statistics, start_ts, end_ts):
     summary = {}
-    users = user_statistics["user"].unique()
     user_statistics = user_statistics.loc[(user_statistics['date'] >= start_ts) & (user_statistics['date'] <= end_ts)]
+    users = user_statistics["user"].unique()
     user_statistics_self = user_statistics.loc[user_statistics["paid_by"] == user_statistics["user"]]
     user_statistics_other = user_statistics.loc[user_statistics["paid_by"] != user_statistics["user"]]
 
@@ -82,17 +82,25 @@ def get_user_report(user_statistics, start_ts, end_ts):
     grouped_data = []
 
     for each_statistic in process_list:
-        user_expenditure = each_statistic.groupby(["paid_by", "category"])["amount"].sum().reset_index()
-        result_dict = {paid_by: dict(zip(user_expenditure[user_expenditure["paid_by"] == paid_by]["category"],
-                                      round(user_expenditure[user_expenditure["paid_by"] == paid_by]["amount"], 2)))
-                       for paid_by in user_expenditure["paid_by"].unique()}
+        user_payout = each_statistic.groupby(["paid_by", "category"])["amount"].sum().reset_index()
+        result_dict = {paid_by: dict(zip(user_payout[user_payout["paid_by"] == paid_by]["category"],
+                                      round(user_payout[user_payout["paid_by"] == paid_by]["amount"], 2)))
+                       for paid_by in user_payout["paid_by"].unique()}
         grouped_data.append(result_dict)
+
+    # Calculate total expenditure belongs to user
+    user_expenditure = user_statistics.groupby(["user", "category"])["amount"].sum().reset_index()
+    result_dict = {user: dict(zip(user_expenditure[user_expenditure["user"] == user]["category"],
+                                     round(user_expenditure[user_expenditure["user"] == user]["amount"], 2)))
+                   for user in user_expenditure["user"].unique()}
+    grouped_data.append(result_dict)
 
     for user in users:
         summary[user] = {}
-        summary[user]["Total"] = grouped_data[0].get(user)
-        summary[user]["Purchase for self"] = grouped_data[1].get(user)
-        summary[user]["Purchase for others"] = grouped_data[2].get(user)
+        summary[user]["total_purchase"] = grouped_data[0].get(user)
+        summary[user]["self_purchase"] = grouped_data[1].get(user)
+        summary[user]["others_purchase"] = grouped_data[2].get(user)
+        summary[user]["total_expenditure"] = grouped_data[3].get(user)
 
     return summary
 

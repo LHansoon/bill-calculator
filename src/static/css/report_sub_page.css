@@ -62,7 +62,15 @@ body {
 }
 
 .row-sub-category {
-    width: 33%;
+    width: 25%;
+}
+.row-sub div:last-child {
+    border-left: 2px solid black;
+    border-left-color: #dddddd;
+}
+
+.row-sub div:last-child p {
+    padding-left: 10px;
 }
 
 button {
