@@ -128,8 +128,8 @@ def process_pay():
     amount = json_request.get("amount")
 
     time_now = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
-    # date, from, to, product, price, tax_flg, who, type
-    result = [time_now, from_who, to_who, app.config.get("money_return_msg"), amount, None, None, "pay"]
+    # date, category, from, to, product, price, tax_flg, who, type
+    result = [time_now, None, from_who, to_who, app.config.get("money_return_msg"), amount, None, None, "pay"]
 
     sheet = get_sheet(content=False)
     sheet.append_row(result, table_range="A1:H1")
