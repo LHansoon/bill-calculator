@@ -74,7 +74,7 @@ def _routine(arrangements, user_balance, recommended_result):
 def get_user_report(user_statistics, start_ts, end_ts):
     summary = {}
     user_statistics = user_statistics.loc[(user_statistics['date'] >= start_ts) & (user_statistics['date'] <= end_ts)]
-    users = user_statistics["user"].unique()
+    users = pd.unique(user_statistics["user"].tolist() + user_statistics["paid_by"].tolist())
     user_statistics_self = user_statistics.loc[user_statistics["paid_by"] == user_statistics["user"]]
     user_statistics_other = user_statistics.loc[user_statistics["paid_by"] != user_statistics["user"]]
 
