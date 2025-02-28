@@ -1,6 +1,7 @@
 
 let report_container_element = document.getElementById("email-list-container");
 let year_input_element = document.getElementById("year-input");
+let month_input_element = document.getElementById("month-input");
 
 function openModal() {
     document.getElementById("report-overlay").style.display = "flex";
@@ -88,12 +89,12 @@ function generate_report(report_data) {
 }
 
 function poll_report() {
-    let year_begin = new Date(year_input_element.value, 0, 1);
-    let year_end = new Date(year_input_element.value, 11, 31, 24, 59, 59);
+    let date_begin = new Date(year_input_element.value, month_input_element.value - 1, 1);
+    let date_end = new Date(year_input_element.value, month_input_element.value - 1, 31, 24, 59, 59);
 
     let time_params = {
-        start_time: year_begin.toISOString(),
-        end_time: year_end.toISOString()
+        start_time: date_begin.toISOString(),
+        end_time: date_end.toISOString()
     }
     let search_string = toQueryString(time_params);
     fetch(`/get-report?${search_string}`, {method: "GET"})
