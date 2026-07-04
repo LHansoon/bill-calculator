@@ -90,7 +90,7 @@ function generate_report(report_data) {
 
 function poll_report() {
     let date_begin = new Date(year_input_element.value, month_input_element.value - 1, 1);
-    let date_end = new Date(year_input_element.value, month_input_element.value - 1, 31, 24, 59, 59);
+    let date_end = new Date(year_input_element.value, month_input_element.value, 0, 23, 59, 59);
 
     let time_params = {
         start_time: date_begin.toISOString(),

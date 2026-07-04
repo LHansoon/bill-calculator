@@ -97,10 +97,10 @@ def get_user_report(user_statistics, start_ts, end_ts):
 
     for user in users:
         summary[user] = {}
-        summary[user]["total_purchase"] = grouped_data[0].get(user)
-        summary[user]["self_purchase"] = grouped_data[1].get(user)
-        summary[user]["others_purchase"] = grouped_data[2].get(user)
-        summary[user]["total_expenditure"] = grouped_data[3].get(user)
+        summary[user]["total_purchase"] = grouped_data[0].get(user, {})
+        summary[user]["self_purchase"] = grouped_data[1].get(user, {})
+        summary[user]["others_purchase"] = grouped_data[2].get(user, {})
+        summary[user]["total_expenditure"] = grouped_data[3].get(user, {})
 
     return summary
 

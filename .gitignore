@@ -127,3 +127,8 @@ dmypy.json
 
 # Pyre type checker
 .pyre/
+
+# Sensitive config and credentials
+src/credentials.json
+src/config.json
+src/data/
