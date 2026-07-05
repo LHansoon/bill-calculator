@@ -7,6 +7,9 @@ import re
 from flask import current_app
 import pandas as pd
 
+_USER_SHARE_RE = re.compile(r"([^\r\n\t\f\v,()]+)(?:\((\d*.?\d*)\))?")
+
+
 
 def clean_zero_node(arrangement):
     new_arrangement = arrangement.copy()
@@ -183,9 +186,6 @@ def parse_row(row):
 
 
 class Processor:
-    def __init__(self):
-        self.regex_search_user_share_pair = re.compile(r"([^\r\n\t\f\v,()]+)(?:\((\d*.?\d*)\))?")
-
     def process(self, content: Content):
         CONDITION_CHECK_COLS = ["from", "to", "price", "who", "type"]
 
@@ -245,7 +245,7 @@ class Processor:
                 user_share_pair = dict()
                 total_share = 0
                 if "(" in who:
-                    user_n_share_search = self.regex_search_user_share_pair.findall(who)
+                    user_n_share_search = _USER_SHARE_RE.findall(who)
 
                     for combination in user_n_share_search:
                         name = combination[0].strip()

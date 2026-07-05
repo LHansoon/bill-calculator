@@ -3,7 +3,6 @@ import pandas as pd
 
 class Content:
     def __init__(self, sheet_content):
-        self.sheet_content = sheet_content
         df = pd.DataFrame(sheet_content)
 
         date_column = pd.to_datetime(df["date"], format='%Y-%m-%d %H:%M:%S', errors='coerce')

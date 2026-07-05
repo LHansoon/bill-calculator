@@ -1,6 +1,12 @@
+import importlib.metadata
+if not hasattr(importlib.metadata, 'packages_distributions'):
+    from importlib_metadata import packages_distributions as _pd
+    importlib.metadata.packages_distributions = _pd
+
 import json
 import logging
 import html
+import time
 
 from flask import Flask, render_template, request
 import decorators
@@ -20,8 +26,11 @@ logger = app.logger
 global last_update_ts
 global sheet_obj
 global sheet_content_cache
-global stat_cache
+global processed_cache
 global CRED
+
+_drive_check_cache = {"ts": None, "wall": 0.0}
+_DRIVE_TTL = 30.0
 
 GOOGLE_SCOPE = [
     'https://www.googleapis.com/auth/drive',
@@ -73,9 +82,8 @@ def get_report():
     start_time = datetime.date(datetime.fromisoformat(start_time.replace("Z", "+00:00")))
     end_time = datetime.date(datetime.fromisoformat(end_time.replace("Z", "+00:00")))
 
-    sheet_content = get_sheet()
-    processor_obj = Processor.Processor()
-    result, user_stat, missing_column_dict = processor_obj.process(sheet_content)
+    get_sheet()
+    _, user_stat, _, _ = processed_cache
 
     report = Processor.get_user_report(user_stat, start_time, end_time)
 
@@ -84,24 +92,13 @@ def get_report():
 
 @app.route("/", methods=["GET"])
 def start_mission():
-    sheet_content = get_sheet()
+    get_sheet()
+    result, user_stat, recommended_result, missing_column_dict = processed_cache
 
-    processor = Processor.Processor()
-    result, user_stat, missing_column_dict = processor.process(sheet_content)
-
-    recommended_result = Processor.get_optimized(result, sheet_content)
     summary, curr_month_summary, last_month_summary, event_summary, user_df_past_30_days = Processor.get_summary(user_stat)
 
-    users = list()
-    to_users = list()
     from_users = list(result.keys())
-
-    for user in result.keys():
-        users.append(user)
-        for sub_user in result[user].keys():
-            users.append(sub_user)
-            to_users.append(sub_user)
-    to_users = list(set(to_users))
+    to_users = list({sub for user in result for sub in result[user]})
 
     result = render_template("home.html",
                              recommended_result=recommended_result,
@@ -133,6 +130,7 @@ def process_pay():
 
     sheet = get_sheet(content=False)
     sheet.append_row(result, table_range="A1:H1")
+    _drive_check_cache["ts"] = None  # force fresh check on next request
 
     return {"result": True, "message": "Success"}, 200
 
@@ -140,11 +138,17 @@ def process_pay():
 def get_last_update_ts():
     global CRED
 
+    now = time.time()
+    if _drive_check_cache["ts"] is not None and now - _drive_check_cache["wall"] < _DRIVE_TTL:
+        return _drive_check_cache["ts"]
+
     sheet_id = app.config.get("sheet_id")
     google_drive_service = build('drive', 'v3', credentials=CRED)
     sheet_metadata = google_drive_service.files().get(fileId=sheet_id, fields="id, name, modifiedTime").execute()
     curr_last_update_ts = sheet_metadata.get("modifiedTime")
 
+    _drive_check_cache["ts"] = curr_last_update_ts
+    _drive_check_cache["wall"] = now
     return curr_last_update_ts
 
 
@@ -152,6 +156,7 @@ def get_sheet(content=True):
     global last_update_ts
     global sheet_obj
     global sheet_content_cache
+    global processed_cache
     global CRED
 
     sheet_id = app.config.get("sheet_id")
@@ -163,10 +168,14 @@ def get_sheet(content=True):
     if is_on_start:
         client = gspread.authorize(CRED)
         sheet_obj = client.open_by_key(sheet_id).sheet1
-        last_update_ts = curr_last_update_ts
 
     if is_on_start or curr_last_update_ts != last_update_ts:
+        last_update_ts = curr_last_update_ts
         sheet_content_cache = Content(sheet_obj.get_all_records())
+        proc = Processor.Processor()
+        _result, _user_stat, _missing = proc.process(sheet_content_cache)
+        _recommended = Processor.get_optimized(_result, sheet_content_cache)
+        processed_cache = (_result, _user_stat, _recommended, _missing)
 
     return sheet_content_cache if content else sheet_obj
 
@@ -183,5 +192,6 @@ if __name__ == '__main__':
     # initialize some of the vars
     CRED = ServiceAccountCredentials.from_json_keyfile_name(file_name, GOOGLE_SCOPE)
     last_update_ts = None
+    processed_cache = None
 
     app.run(host="0.0.0.0", port=app.config.get("port"), debug=True)
