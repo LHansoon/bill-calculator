@@ -4,7 +4,6 @@ from datetime import date, timedelta
 import Content
 import re
 
-from flask import current_app
 import pandas as pd
 
 _USER_SHARE_RE = re.compile(r"([^\r\n\t\f\v,()]+)(?:\((\d*.?\d*)\))?")
@@ -186,7 +185,7 @@ def parse_row(row):
 
 
 class Processor:
-    def process(self, content: Content):
+    def process(self, content: Content, tax_rate: float):
         CONDITION_CHECK_COLS = ["from", "to", "price", "who", "type"]
 
         stat_columns = ["date", "user", "amount", "event_tag"]
@@ -236,11 +235,11 @@ class Processor:
                 person_paid_for_it = row["from"]
                 who = row["who"]
                 tax_flag = row["tax_flg"]
-                tax_rate = tax_flag
+                row_tax_rate = tax_flag
                 if tax_flag == "y":
-                    tax_rate = current_app.config.get("tax_rate")
+                    row_tax_rate = tax_rate
                 elif tax_flag == "":
-                    tax_rate = 0
+                    row_tax_rate = 0
 
                 user_share_pair = dict()
                 total_share = 0
@@ -272,7 +271,7 @@ class Processor:
 
                 for user in user_share_pair:
                     user_share_percentage = user_share_pair[user] / total_share
-                    price_each_user = row["price"] * (1 + tax_rate) * user_share_percentage
+                    price_each_user = row["price"] * (1 + row_tax_rate) * user_share_percentage
 
                     if user != person_paid_for_it:
                         try:

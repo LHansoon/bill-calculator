@@ -186,7 +186,8 @@ def get_sheet(content=True):
         last_update_ts = curr_last_update_ts
         sheet_content_cache = Content(sheet_obj.get_all_records())
         proc = Processor.Processor()
-        _result, _user_stat, _missing = proc.process(sheet_content_cache)
+        _result, _user_stat, _missing = proc.process(
+            sheet_content_cache, app.config.get("tax_rate"))
         _recommended = Processor.get_optimized(_result, sheet_content_cache)
         processed_cache = (_result, _user_stat, _recommended, _missing)
 
