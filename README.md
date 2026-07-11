@@ -20,7 +20,8 @@ config.json in src
     "cred_path": "credentials.json",
     "tax_rate": 0.15,
     "money_return_msg": "Money Trans💰",
-    "port": 8000
+    "port": 8000,
+    "chat_path": "data/chat.json"
 }
 ```
 

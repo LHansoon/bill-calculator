@@ -8,15 +8,21 @@ from flask import current_app
 lock = RLock()
 
 
-def process_post(ts, name, message):
+def _chat_path():
     try:
-        path = current_app.config.chat_path
-    except AttributeError as e:
-        path = "data/chat.json"
+        return current_app.config.get("chat_path", "data/chat.json")
+    except RuntimeError:
+        # called outside an app context (e.g. tests, SSE generator)
+        return "data/chat.json"
+
+
+def process_post(ts, name, message, path=None):
+    if path is None:
+        path = _chat_path()
 
     if not os.path.isfile(path):
         path_to_file = os.path.dirname(path)
-        if not os.path.exists(path_to_file):
+        if path_to_file and not os.path.exists(path_to_file):
             os.makedirs(path_to_file)
         open(path, "a")
 
@@ -42,11 +48,9 @@ def process_post(ts, name, message):
     lock.release()
 
 
-def get_posts():
-    try:
-        path = current_app.config.chat_path
-    except AttributeError as e:
-        path = "data/chat.json"
+def get_posts(path=None):
+    if path is None:
+        path = _chat_path()
 
     if os.path.isfile(path):
         lock.acquire()
@@ -58,4 +62,3 @@ def get_posts():
             return history
 
     return list()
-
