@@ -8,7 +8,7 @@ import logging
 import html
 import time
 
-from flask import Flask, render_template, request
+from flask import Flask, render_template, request, Response
 import decorators
 from datetime import datetime
 import sys
@@ -66,6 +66,26 @@ def post_chat():
         return {"result": True, "message": "Success"}, 200
     else:
         return {"result": False, "message": "name or message is empty."}, 400
+
+
+@app.route("/chat-stream", methods=["GET"])
+def chat_stream():
+    # Resolve config OUTSIDE the generator: the generator body runs
+    # after the request context is gone.
+    chat_path = app.config.get("chat_path", "data/chat.json")
+
+    def gen():
+        version = 0
+        while True:
+            version = Chat.wait_for_change(version, timeout=25.0)
+            payload = json.dumps(Chat.get_posts(path=chat_path))
+            # On timeout this re-sends the same payload: that is the
+            # keep-alive. The client dedupes by string.
+            yield f"data: {payload}\n\n"
+
+    return Response(gen(), mimetype="text/event-stream",
+                    headers={"Cache-Control": "no-cache",
+                             "X-Accel-Buffering": "no"})
 
 
 @app.route("/get-chat", methods=["GET"])
