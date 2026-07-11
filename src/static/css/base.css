@@ -233,3 +233,5 @@ a { color: var(--primary); }
 .debug {
     display: none;
 }
+
+.hidden { display: none; }

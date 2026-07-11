@@ -90,10 +90,22 @@ def chat_stream():
 
 @app.route("/get-report", methods=["GET"])
 def get_report():
-    start_time = request.args.get("start_time")
-    end_time = request.args.get("end_time")
-    start_time = datetime.date(datetime.fromisoformat(start_time.replace("Z", "+00:00")))
-    end_time = datetime.date(datetime.fromisoformat(end_time.replace("Z", "+00:00")))
+    start_raw = request.args.get("start_time")
+    end_raw = request.args.get("end_time")
+    if not start_raw or not end_raw:
+        return {"result": False,
+                "message": "start_time and end_time are required"}, 400
+    try:
+        start_time = datetime.fromisoformat(
+            start_raw.replace("Z", "+00:00")).date()
+        end_time = datetime.fromisoformat(
+            end_raw.replace("Z", "+00:00")).date()
+    except ValueError:
+        return {"result": False,
+                "message": "start_time/end_time must be ISO 8601"}, 400
+    if start_time > end_time:
+        return {"result": False,
+                "message": "start_time must be <= end_time"}, 400
 
     get_sheet()
     _, user_stat, _, _ = processed_cache
@@ -123,8 +135,7 @@ def start_mission():
                              event_summary=event_summary,
                              sheet_id=app.config.get("sheet_id"),
                              missing_column_dict=missing_column_dict,
-                             report_value=user_df_past_30_days,
-                             emails={"hanson": "sample@gmail.com"})
+                             report_value=user_df_past_30_days)
     return result, 200
 
 
@@ -186,7 +197,8 @@ def get_sheet(content=True):
         last_update_ts = curr_last_update_ts
         sheet_content_cache = Content(sheet_obj.get_all_records())
         proc = Processor.Processor()
-        _result, _user_stat, _missing = proc.process(sheet_content_cache)
+        _result, _user_stat, _missing = proc.process(
+            sheet_content_cache, app.config.get("tax_rate"))
         _recommended = Processor.get_optimized(_result, sheet_content_cache)
         processed_cache = (_result, _user_stat, _recommended, _missing)
 
