@@ -2,12 +2,21 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>home</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Bill Calculator</title>
     <link rel="stylesheet" href="{{url_for('static', filename='css/report_sub_page.css')}}">
     <link rel="stylesheet" href="{{url_for('static', filename='css/base.css')}}">
 
 
 </head>
+<body>
+
+<header id="page-header">
+    <h1>Bill Calculator</h1>
+    <a target="_blank"
+       href="https://docs.google.com/spreadsheets/d/{{sheet_id}}/edit#gid=0">
+        Open Google Sheet ↗</a>
+</header>
 
 {% if missing_column_dict %}
     <div class="error-banner">
@@ -39,7 +48,7 @@
 
 
 <div id="main-container">
-    <div id="major-info">
+    <div id="major-info" class="card">
         <div id="major-content">
 
         </div>
@@ -49,14 +58,13 @@
                 <input type="submit" value="Add user">
             </form>
         </div>
-        <hr>
         <div>
             <button class="open-btn" onclick="openModal()">Annual Report</button>
         </div>
     </div>
 
     <div id="right-section">
-        <div id="pay-section">
+        <div id="pay-section" class="card">
             <h2>Add transaction</h2>
             <form id="pay-form">
                 <label for="from">From:</label><br>
@@ -76,8 +84,7 @@
                 <button id="pay_button">add transaction</button>
             </form>
         </div>
-        <hr>
-        <div id="billboard">
+        <div id="billboard" class="card">
             <div class="chats" id="chat">
 
             </div>
@@ -91,8 +98,7 @@
     </div>
 </div>
 
-<hr>
-
+<section class="page-section">
 <h2 class="collapsible summary-btn">Summary</h2>
 <div class="collapsible-container" style="display: none">
     <div class="summary-block">
@@ -123,9 +129,9 @@
     </div>
 
 </div>
+</section>
 
-<hr>
-
+<section class="page-section">
 <div id="event-summary-section">
     {% for key, value in event_summary.items() %}
 
@@ -151,28 +157,7 @@
 
 
 </div>
-
-
-<hr>
-
-
-{#<div id="example"></div>#}
-
-
-
-<div id="sheet_viewer">
-{#    <p>If no permission, request for the permission, then refresh</p>#}
-    <a target="_blank" href="https://docs.google.com/spreadsheets/d/{{sheet_id}}/edit#gid=0">https://docs.google.com/spreadsheets/d/{{sheet_id}}/edit#gid=0</a>
-{#    <iframe#}
-{#            src="https://docs.google.com/spreadsheets/d/{{sheet_id}}/preview"#}
-{#            height="100%"#}
-{#            width="100%"#}
-{#    ></iframe>#}
-
-</div>
-
-
-</body>
+</section>
 
 
 <script>
@@ -189,4 +174,5 @@
 <script src="{{url_for('static', filename='report_sub_page.js')}}"></script>
 
 
+</body>
 </html>
