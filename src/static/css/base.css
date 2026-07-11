@@ -128,17 +128,28 @@ a { color: var(--primary); }
     margin-block-end: 1em;
 }
 
-#sheet_viewer {
-    /*{#float: left;#}*/
-    /*{#width: 85%;#}*/
-    height: 500px;
+#page-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    margin-bottom: 16px;
 }
+#page-header h1 { margin: 0; font-size: 22px; }
 
-#main-container > div{
-    display: inline-block;
-    width: 49%;
-    vertical-align: top;
+#main-container {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 16px;
+    align-items: start;
 }
+#right-section {
+    display: grid;
+    gap: 16px;
+}
+@media (max-width: 900px) {
+    #main-container { grid-template-columns: 1fr; }
+}
+.page-section { margin-top: 16px; }
 
 #summary-section, #event-summary-section {
     display: flex;
