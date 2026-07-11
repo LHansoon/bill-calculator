@@ -2,12 +2,14 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>home</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Bill Calculator</title>
     <link rel="stylesheet" href="{{url_for('static', filename='css/report_sub_page.css')}}">
     <link rel="stylesheet" href="{{url_for('static', filename='css/base.css')}}">
 
 
 </head>
+<body>
 
 {% if missing_column_dict %}
     <div class="error-banner">
@@ -172,9 +174,6 @@
 </div>
 
 
-</body>
-
-
 <script>
 
     let js_value = {{ recommended_result|tojson }};
@@ -189,4 +188,5 @@
 <script src="{{url_for('static', filename='report_sub_page.js')}}"></script>
 
 
+</body>
 </html>
