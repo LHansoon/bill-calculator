@@ -1,7 +1,46 @@
 
 let report_container_element = document.getElementById("email-list-container");
-let year_input_element = document.getElementById("year-input");
-let month_input_element = document.getElementById("month-input");
+let preset_element = document.getElementById("range-preset");
+let range_start_element = document.getElementById("range-start");
+let range_end_element = document.getElementById("range-end");
+
+function compute_range() {
+    const now = new Date();
+    const y = now.getFullYear(), m = now.getMonth();
+    switch (preset_element.value) {
+        case "this_month":
+            return {start: new Date(y, m, 1),
+                    end: new Date(y, m + 1, 0, 23, 59, 59)};
+        case "last_month":
+            return {start: new Date(y, m - 1, 1),
+                    end: new Date(y, m, 0, 23, 59, 59)};
+        case "this_year":
+            return {start: new Date(y, 0, 1),
+                    end: new Date(y, 11, 31, 23, 59, 59)};
+        case "last_year":
+            return {start: new Date(y - 1, 0, 1),
+                    end: new Date(y - 1, 11, 31, 23, 59, 59)};
+        case "custom": {
+            if (!range_start_element.value || !range_end_element.value) {
+                return null;   // wait until both dates picked
+            }
+            let start = new Date(range_start_element.value + "T00:00:00");
+            let end = new Date(range_end_element.value + "T23:59:59");
+            return {start: start, end: end};
+        }
+    }
+}
+
+function on_range_control_change() {
+    const is_custom = preset_element.value === "custom";
+    range_start_element.classList.toggle("hidden", !is_custom);
+    range_end_element.classList.toggle("hidden", !is_custom);
+    refreshModal();
+}
+
+preset_element.addEventListener("change", on_range_control_change);
+range_start_element.addEventListener("change", on_range_control_change);
+range_end_element.addEventListener("change", on_range_control_change);
 
 function openModal() {
     document.getElementById("report-overlay").style.display = "flex";
@@ -89,8 +128,13 @@ function generate_report(report_data) {
 }
 
 function poll_report() {
-    let date_begin = new Date(year_input_element.value, month_input_element.value - 1, 1);
-    let date_end = new Date(year_input_element.value, month_input_element.value, 0, 23, 59, 59);
+    const range = compute_range();
+    if (range === null) {
+        remove_loader(report_container_element);
+        return;
+    }
+    let date_begin = range.start;
+    let date_end = range.end;
 
     let time_params = {
         start_time: date_begin.toISOString(),

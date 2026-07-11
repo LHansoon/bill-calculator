@@ -33,8 +33,15 @@
     <div class="modal">
         <div class="row-main">
             <span>
-                <input type="number" id="year-input" name="year" min="2000" max="2100" value="2025" required>
-                <input type="number" id="month-input" name="month" min="1" max="12" value="2" required>
+                <select id="range-preset">
+                    <option value="this_month" selected>This month</option>
+                    <option value="last_month">Last month</option>
+                    <option value="this_year">This year</option>
+                    <option value="last_year">Last year</option>
+                    <option value="custom">Custom…</option>
+                </select>
+                <input type="date" id="range-start" class="hidden">
+                <input type="date" id="range-end" class="hidden">
                 <button onclick="refreshModal()">Refresh</button>
             </span>
             <button class="close-btn" onclick="closeModal()">Close</button>
@@ -59,7 +66,7 @@
             </form>
         </div>
         <div>
-            <button class="open-btn" onclick="openModal()">Annual Report</button>
+            <button class="open-btn" onclick="openModal()">Report</button>
         </div>
     </div>
 
