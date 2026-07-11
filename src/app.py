@@ -88,13 +88,6 @@ def chat_stream():
                              "X-Accel-Buffering": "no"})
 
 
-@app.route("/get-chat", methods=["GET"])
-def get_chat():
-    chats = Chat.get_posts()
-    chats = json.dumps(chats)
-
-    return {"result": True, "message": chats}, 200
-
 @app.route("/get-report", methods=["GET"])
 def get_report():
     start_time = request.args.get("start_time")
