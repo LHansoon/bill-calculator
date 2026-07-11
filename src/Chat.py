@@ -1,11 +1,38 @@
 import json
 import os
+import threading
 from operator import itemgetter
 from threading import RLock
 from flask import current_app
 
 
 lock = RLock()
+
+condition = threading.Condition()
+_version = 1          # clients start at 0 -> first wait returns
+
+
+def get_version():
+    with condition:
+        return _version
+
+
+def _bump_version():
+    global _version
+    with condition:
+        _version += 1
+        condition.notify_all()
+
+
+def wait_for_change(known_version, timeout):
+    """Block until the chat version differs from known_version or
+    timeout (seconds) elapses. Returns the current version either
+    way — the caller can't distinguish timeout from change, and
+    doesn't need to (re-sending the same state is harmless)."""
+    with condition:
+        condition.wait_for(lambda: _version != known_version,
+                           timeout=timeout)
+        return _version
 
 
 def _chat_path():
@@ -46,6 +73,8 @@ def process_post(ts, name, message, path=None):
         file.write(history_json)
 
     lock.release()
+
+    _bump_version()
 
 
 def get_posts(path=None):
