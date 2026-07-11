@@ -1,4 +1,3 @@
-import copy
 from datetime import date, timedelta
 
 import Content
@@ -22,55 +21,120 @@ def clean_zero_node(arrangement):
     return new_arrangement
 
 
-def _routine(arrangements, user_balance, recommended_result):
-    user_balance_cpy = copy.deepcopy(user_balance)
-    for user in user_balance:
-        if user_balance[user] == 0 or abs(user_balance[user]) < 0.00001:
-            del user_balance_cpy[user]
-    user_balance = user_balance_cpy
+def _settle_greedy_cents(cents):
+    """Repeatedly settle the largest debtor against the largest
+    creditor. Each iteration zeroes at least one user, so this
+    terminates in <= n-1 transfers.
 
-    minimums = dict((k, v) for k, v in user_balance.items() if v < 0)
-    maximums = dict((k, v) for k, v in user_balance.items() if v > 0)
+    cents: dict user -> int (sum exactly 0). Mutates its argument.
+    Returns a transfer list [(debtor, creditor, cents)]."""
+    transfers = []
+    while cents:
+        debtor = min(cents, key=cents.get)     # most negative
+        creditor = max(cents, key=cents.get)   # most positive
+        amount = min(-cents[debtor], cents[creditor])
+        transfers.append((debtor, creditor, amount))
+        cents[debtor] += amount
+        cents[creditor] -= amount
+        if cents[debtor] == 0:
+            del cents[debtor]
+        if creditor in cents and cents[creditor] == 0:
+            del cents[creditor]
+    return transfers
 
-    try:
-        max_minimum = max(minimums, key=minimums.get)
-        max_maximum = max(maximums, key=maximums.get)
-    except ValueError:
-        return
 
-    max_minimum_value = user_balance[max_minimum]
-    max_maximum_value = user_balance[max_maximum]
+def _zero_sum_groups(cents):
+    """Partition users into the maximum number of zero-sum groups.
+    Bitmask DP over subset sums, O(3^n); only call with
+    len(cents) <= 12."""
+    users = list(cents)
+    n = len(users)
+    full = (1 << n) - 1
+    subset_sum = [0] * (1 << n)
+    for mask in range(1, 1 << n):
+        lsb = mask & -mask
+        subset_sum[mask] = (subset_sum[mask ^ lsb]
+                            + cents[users[lsb.bit_length() - 1]])
+    best = [-1] * (1 << n)
+    choice = [0] * (1 << n)
+    best[0] = 0
+    for mask in range(1, 1 << n):
+        sub = mask
+        while sub:
+            if subset_sum[sub] == 0 and best[mask ^ sub] >= 0 \
+                    and best[mask ^ sub] + 1 > best[mask]:
+                best[mask] = best[mask ^ sub] + 1
+                choice[mask] = sub
+            sub = (sub - 1) & mask
+    groups = []
+    mask = full
+    while mask:
+        sub = choice[mask]
+        groups.append([users[i] for i in range(n) if (sub >> i) & 1])
+        mask ^= sub
+    return groups
 
-    summation = max_minimum_value + max_maximum_value
 
-    amount = max_maximum_value
-    if summation > 0:
-        del user_balance[max_minimum]
-        user_balance[max_maximum] += max_minimum_value
-        # procedures.extend(build_transfer_base_on_transfer_order(arrangements[max_minimum], max_minimum, max_maximum, -max_minimum_value))
-        # print(f"{max_minimum} 转给 {max_maximum} {-max_minimum_value}刀")
+def settle(balances):
+    """Compute transfers that zero all balances.
 
-        amount = -max_minimum_value
+    balances: {user: net_dollars}; negative = owes money,
+              positive = is owed. Sum must be ~0.
+    Returns {debtor: {creditor: dollars_2dp}}.
+    """
+    cents = {u: int(round(b * 100)) for u, b in balances.items()}
+    cents = {u: c for u, c in cents.items() if c != 0}
 
-    elif summation < 0:
-        del user_balance[max_maximum]
-        user_balance[max_minimum] += max_maximum_value
-        # procedures.extend(build_transfer_base_on_transfer_order(arrangements[max_minimum], max_minimum, max_maximum, max_maximum_value))
-        # print(f"{max_minimum} 转给 {max_maximum} {max_maximum_value}刀")
-    elif summation == 0:
-        del user_balance[max_maximum]
-        del user_balance[max_minimum]
-        # procedures.extend(build_transfer_base_on_transfer_order(arrangements[max_minimum], max_minimum, max_maximum, max_maximum_value))
-        # print(f"{max_minimum} 转给 {max_maximum} {max_maximum_value}刀")
+    # Float noise can leave the total a cent or two off zero; if left
+    # alone the greedy loop below cannot terminate. Dump the residue
+    # on the largest-magnitude balance (sub-cent fairness is not a
+    # real concern).
+    residue = sum(cents.values())
+    if residue != 0 and cents:
+        victim = max(cents, key=lambda u: abs(cents[u]))
+        cents[victim] -= residue
+        if cents[victim] == 0:
+            del cents[victim]
 
-    if amount != 0:
-        if max_minimum not in recommended_result:
-            recommended_result[max_minimum] = dict()
-        if max_maximum not in recommended_result[max_minimum]:
-            recommended_result[max_minimum][max_maximum] = dict()
+    transfers = []   # list of (debtor, creditor, cents)
 
-        recommended_result[max_minimum][max_maximum] = amount
-    _routine(arrangements, user_balance, recommended_result)
+    if 0 < len(cents) <= 12:
+        # Small group: partition into the maximum number of zero-sum
+        # subsets (bitmask DP) — a group of size k settles in exactly
+        # k-1 transfers, so more groups = provably fewest transfers.
+        # This subsumes the exact-match pre-pass (pairs are zero-sum
+        # groups of size 2).
+        for group in _zero_sum_groups(cents):
+            group_cents = {u: cents[u] for u in group}
+            transfers.extend(_settle_greedy_cents(group_cents))
+    else:
+        # Large group: exact-match pre-pass, then greedy. A debtor and
+        # creditor whose amounts cancel exactly can always be settled
+        # with one transfer without hurting optimality elsewhere.
+        found = True
+        while found:
+            found = False
+            credit_owner = {}
+            for user, c in cents.items():
+                if c > 0 and c not in credit_owner:
+                    credit_owner[c] = user
+            for user, c in list(cents.items()):
+                if c < 0 and -c in credit_owner:
+                    creditor = credit_owner[-c]
+                    transfers.append((user, creditor, -c))
+                    del cents[user]
+                    del cents[creditor]
+                    found = True
+                    break
+
+        transfers.extend(_settle_greedy_cents(cents))
+
+    result = {}
+    for debtor, creditor, amount in transfers:
+        result.setdefault(debtor, {})
+        result[debtor][creditor] = (
+            result[debtor].get(creditor, 0) + round(amount / 100.0, 2))
+    return result
 
 
 def get_user_report(user_statistics, start_ts, end_ts):
@@ -156,28 +220,13 @@ def get_summary(user_statistics):
 
 
 def get_optimized(result, content):
-    result_copy = copy.deepcopy(result)
-    df = content.get_df()
-    df["who"] = df["who"].apply(lambda x: str(x).replace("，", ",").replace("（", "(").replace("）", ")"))
     users = content.get_users()
-    user_balance = dict()
-    for user in users:
-        user_balance[user] = 0
-
-    for user in result_copy:
-        for sub_user in result_copy[user]:
-            user_balance[user] -= result_copy[user][sub_user]
-            user_balance[sub_user] += result_copy[user][sub_user]
-
-    recommended_result = dict()
-    _routine(result_copy, user_balance, recommended_result)
-
-    # round the user balance to 2 decimal places
-    for user in recommended_result:
-        for sub_user in recommended_result[user]:
-            recommended_result[user][sub_user] = round(recommended_result[user][sub_user], 2)
-
-    return recommended_result
+    user_balance = {user: 0 for user in users}
+    for user in result:
+        for sub_user in result[user]:
+            user_balance[user] -= result[user][sub_user]
+            user_balance[sub_user] += result[user][sub_user]
+    return settle(user_balance)
 
 
 def parse_row(row):
