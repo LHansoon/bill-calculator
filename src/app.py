@@ -90,10 +90,22 @@ def chat_stream():
 
 @app.route("/get-report", methods=["GET"])
 def get_report():
-    start_time = request.args.get("start_time")
-    end_time = request.args.get("end_time")
-    start_time = datetime.date(datetime.fromisoformat(start_time.replace("Z", "+00:00")))
-    end_time = datetime.date(datetime.fromisoformat(end_time.replace("Z", "+00:00")))
+    start_raw = request.args.get("start_time")
+    end_raw = request.args.get("end_time")
+    if not start_raw or not end_raw:
+        return {"result": False,
+                "message": "start_time and end_time are required"}, 400
+    try:
+        start_time = datetime.fromisoformat(
+            start_raw.replace("Z", "+00:00")).date()
+        end_time = datetime.fromisoformat(
+            end_raw.replace("Z", "+00:00")).date()
+    except ValueError:
+        return {"result": False,
+                "message": "start_time/end_time must be ISO 8601"}, 400
+    if start_time > end_time:
+        return {"result": False,
+                "message": "start_time must be <= end_time"}, 400
 
     get_sheet()
     _, user_stat, _, _ = processed_cache
