@@ -21,6 +21,60 @@ def clean_zero_node(arrangement):
     return new_arrangement
 
 
+def _settle_greedy_cents(cents):
+    """Repeatedly settle the largest debtor against the largest
+    creditor. Each iteration zeroes at least one user, so this
+    terminates in <= n-1 transfers.
+
+    cents: dict user -> int (sum exactly 0). Mutates its argument.
+    Returns a transfer list [(debtor, creditor, cents)]."""
+    transfers = []
+    while cents:
+        debtor = min(cents, key=cents.get)     # most negative
+        creditor = max(cents, key=cents.get)   # most positive
+        amount = min(-cents[debtor], cents[creditor])
+        transfers.append((debtor, creditor, amount))
+        cents[debtor] += amount
+        cents[creditor] -= amount
+        if cents[debtor] == 0:
+            del cents[debtor]
+        if creditor in cents and cents[creditor] == 0:
+            del cents[creditor]
+    return transfers
+
+
+def _zero_sum_groups(cents):
+    """Partition users into the maximum number of zero-sum groups.
+    Bitmask DP over subset sums, O(3^n); only call with
+    len(cents) <= 12."""
+    users = list(cents)
+    n = len(users)
+    full = (1 << n) - 1
+    subset_sum = [0] * (1 << n)
+    for mask in range(1, 1 << n):
+        lsb = mask & -mask
+        subset_sum[mask] = (subset_sum[mask ^ lsb]
+                            + cents[users[lsb.bit_length() - 1]])
+    best = [-1] * (1 << n)
+    choice = [0] * (1 << n)
+    best[0] = 0
+    for mask in range(1, 1 << n):
+        sub = mask
+        while sub:
+            if subset_sum[sub] == 0 and best[mask ^ sub] >= 0 \
+                    and best[mask ^ sub] + 1 > best[mask]:
+                best[mask] = best[mask ^ sub] + 1
+                choice[mask] = sub
+            sub = (sub - 1) & mask
+    groups = []
+    mask = full
+    while mask:
+        sub = choice[mask]
+        groups.append([users[i] for i in range(n) if (sub >> i) & 1])
+        mask ^= sub
+    return groups
+
+
 def settle(balances):
     """Compute transfers that zero all balances.
 
@@ -44,39 +98,36 @@ def settle(balances):
 
     transfers = []   # list of (debtor, creditor, cents)
 
-    # Exact-match pre-pass: a debtor and creditor whose amounts cancel
-    # exactly can always be settled with one transfer without hurting
-    # optimality elsewhere.
-    found = True
-    while found:
-        found = False
-        credit_owner = {}
-        for user, c in cents.items():
-            if c > 0 and c not in credit_owner:
-                credit_owner[c] = user
-        for user, c in list(cents.items()):
-            if c < 0 and -c in credit_owner:
-                creditor = credit_owner[-c]
-                transfers.append((user, creditor, -c))
-                del cents[user]
-                del cents[creditor]
-                found = True
-                break
+    if 0 < len(cents) <= 12:
+        # Small group: partition into the maximum number of zero-sum
+        # subsets (bitmask DP) — a group of size k settles in exactly
+        # k-1 transfers, so more groups = provably fewest transfers.
+        # This subsumes the exact-match pre-pass (pairs are zero-sum
+        # groups of size 2).
+        for group in _zero_sum_groups(cents):
+            group_cents = {u: cents[u] for u in group}
+            transfers.extend(_settle_greedy_cents(group_cents))
+    else:
+        # Large group: exact-match pre-pass, then greedy. A debtor and
+        # creditor whose amounts cancel exactly can always be settled
+        # with one transfer without hurting optimality elsewhere.
+        found = True
+        while found:
+            found = False
+            credit_owner = {}
+            for user, c in cents.items():
+                if c > 0 and c not in credit_owner:
+                    credit_owner[c] = user
+            for user, c in list(cents.items()):
+                if c < 0 and -c in credit_owner:
+                    creditor = credit_owner[-c]
+                    transfers.append((user, creditor, -c))
+                    del cents[user]
+                    del cents[creditor]
+                    found = True
+                    break
 
-    # Greedy: repeatedly settle the largest debtor against the largest
-    # creditor. Each iteration zeroes at least one user, so it
-    # terminates in <= n-1 transfers.
-    while cents:
-        debtor = min(cents, key=cents.get)     # most negative
-        creditor = max(cents, key=cents.get)   # most positive
-        amount = min(-cents[debtor], cents[creditor])
-        transfers.append((debtor, creditor, amount))
-        cents[debtor] += amount
-        cents[creditor] -= amount
-        if cents[debtor] == 0:
-            del cents[debtor]
-        if creditor in cents and cents[creditor] == 0:
-            del cents[creditor]
+        transfers.extend(_settle_greedy_cents(cents))
 
     result = {}
     for debtor, creditor, amount in transfers:

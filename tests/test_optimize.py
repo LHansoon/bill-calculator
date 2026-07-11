@@ -94,6 +94,19 @@ def test_exact_match_pairs_settle_directly():
     assert transfers["c"] == {"d": 7.0}
 
 
+def test_dp_beats_plain_greedy():
+    # {-3,-2,+5} and {-4,+4}: optimal 3 transfers (2 + 1).
+    # Largest-first greedy without grouping pairs -4 with +5 first
+    # and needs 4.
+    balances = {"a": -3.0, "b": -2.0, "c": 5.0,
+                "d": -4.0, "e": 4.0}
+    transfers = settle(balances)
+    count = sum(len(v) for v in transfers.values())
+    assert count == 3
+    residuals = _apply_settle(balances, transfers)
+    assert all(abs(v) < 0.01 for v in residuals.values())
+
+
 def test_settle_large_random_terminates():
     rng = random.Random(42)
     balances = {f"u{i}": rng.randint(-500, 500) / 1.0
