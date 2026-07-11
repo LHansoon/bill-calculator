@@ -114,18 +114,49 @@ a { color: var(--primary); }
     position: relative;
 }
 
-.placeholder {
-    background-color: greenyellow;
-    display: inline-block;
-    width: 100px;
-    text-align: center;
-}
-.sub_user_entry_container {
-    display: inline-block;
-}
+.board-hint { color: var(--text-muted); margin-top: -8px; }
+
 .user_entry_container {
-    margin-block-start: 1em;
-    margin-block-end: 1em;
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 10px 12px;
+    margin: 10px 0;
+    background: var(--bg);
+}
+
+.sub_user_entry_container {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin-top: 6px;
+}
+
+.pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 999px;
+    padding: 4px 6px 4px 12px;
+    text-decoration: none;
+    color: var(--text);
+    cursor: grab;
+}
+.pill .clear_debt_btn {
+    border-radius: 999px;
+    padding: 3px 10px;
+    font-size: 12px;
+}
+
+.placeholder {
+    display: inline-block;
+    min-width: 100px;
+    text-align: center;
+    border: 2px dashed var(--primary);
+    border-radius: 999px;
+    color: var(--primary);
+    padding: 4px 12px;
 }
 
 #page-header {
