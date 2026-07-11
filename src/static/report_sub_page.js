@@ -75,6 +75,12 @@ let translation = {
 
 function generate_report(report_data) {
     report_container_element.innerHTML = "";
+    if (!report_data || Object.keys(report_data).length === 0) {
+        report_container_element.innerHTML =
+            `<p class="report-empty">No transactions in this range.</p>`;
+        return;
+    }
+    let grand_total = 0;
     let columns = ["self_purchase", "others_purchase", "total_purchase", "total_expenditure"];
     let total_expenditure_index = "total_expenditure";
 
@@ -87,6 +93,7 @@ function generate_report(report_data) {
             user_expenditure_sum += report_data[user_name][total_expenditure_index][category];
         }
         user_expenditure_sum = Math.round(user_expenditure_sum * 100) / 100;
+        grand_total += user_expenditure_sum;
 
         for (let i in columns) {
             let sum_value = 0;
@@ -125,6 +132,12 @@ function generate_report(report_data) {
         //     <input type="email" value="${js_emails[key]}" />
         //     <button>Action</button>
     }
+
+    grand_total = Math.round(grand_total * 100) / 100;
+    report_container_element.innerHTML += `
+        <div class="row report-grand-total">
+            <div class="row-main"><strong>Total: ${grand_total}</strong></div>
+        </div>`;
 }
 
 function poll_report() {
