@@ -1,3 +1,60 @@
+:root {
+  --bg: #f6f7f9;        --surface: #ffffff;  --border: #e3e6ea;
+  --text: #1f2430;      --text-muted: #6b7280;
+  --primary: #2563eb;   --primary-hover: #1d4ed8;
+  --danger: #dc2626;    --success: #16a34a;
+  --radius: 10px;       --shadow: 0 1px 3px rgba(0,0,0,.08);
+  --font: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto,
+          "PingFang SC", "Microsoft YaHei", sans-serif;
+}
+
+* { box-sizing: border-box; }
+
+body {
+  font-family: var(--font);
+  background: var(--bg);
+  color: var(--text);
+  margin: 0;
+  padding: 16px 24px;
+  line-height: 1.5;
+}
+
+h1, h2, h3 { line-height: 1.2; }
+
+button, input[type="submit"] {
+  background: var(--primary);
+  color: #fff;
+  border: none;
+  border-radius: var(--radius);
+  padding: 8px 14px;
+  font: inherit;
+  cursor: pointer;
+}
+button:hover, input[type="submit"]:hover {
+  background: var(--primary-hover);
+}
+button[disabled] { opacity: .6; cursor: default; }
+
+input:not([type="submit"]), select {
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 8px 10px;
+  font: inherit;
+  background: var(--surface);
+  color: var(--text);
+}
+
+a { color: var(--primary); }
+
+.card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+  padding: 16px;
+}
+
+
 #billboard > .chats {
     overflow-y: scroll;
     display: block;
@@ -106,30 +163,29 @@
 
 /*{#CSS from: https://www.w3schools.com/howto/howto_js_collapsible.asp#}*/
 .summary-btn {
-      background-color: #777;
-      color: white;
-      cursor: pointer;
-      padding: 10px;
-      width: 100%;
-      border: none;
-      text-align: left;
-      outline: none;
-      font-size: 15px;
+  background: var(--surface);
+  color: var(--text);
+  cursor: pointer;
+  padding: 10px 14px;
+  width: 100%;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  text-align: left;
+  font-size: 15px;
 }
+.summary-btn::before { content: "▸ "; color: var(--text-muted); }
+.summary-btn.active::before { content: "▾ "; }
+.summary-btn.active, .summary-btn:hover { background: var(--bg); }
 
 .summary-btn p {
     margin: 0;
-}
-
-.active, .summary-btn:hover {
-    background-color: #555;
 }
 
 .content {
       padding: 0 18px;
       display: none;
       overflow: hidden;
-      background-color: #f1f1f1;
+      background-color: var(--bg);
 }
 
 .debug {
