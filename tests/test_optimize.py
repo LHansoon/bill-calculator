@@ -1,7 +1,10 @@
+import random
+
 import pytest
 
 import Processor
 from Content import Content
+from Processor import settle
 
 TAX_RATE = 0.15
 
@@ -63,3 +66,33 @@ def test_readme_example_settles(sample_records):
         transfers = Processor.get_optimized(result, content)
         assert_settlement_properties(result, transfers,
                                      content.get_users())
+
+
+def _apply_settle(balances, transfers):
+    b = dict(balances)
+    for debtor in transfers:
+        for creditor, amount in transfers[debtor].items():
+            b[debtor] += amount
+            b[creditor] -= amount
+    return b
+
+
+def test_settle_float_noise():
+    # 0.1 is inexact in binary; sums drift. Must settle to 0 cents.
+    balances = {"a": -0.1, "b": -0.2, "c": 0.30000000000000004}
+    transfers = settle(balances)
+    residuals = _apply_settle(balances, transfers)
+    assert all(abs(v) < 0.005 for v in residuals.values())
+
+
+def test_settle_large_random_terminates():
+    rng = random.Random(42)
+    balances = {f"u{i}": rng.randint(-500, 500) / 1.0
+                for i in range(199)}
+    balances["u199"] = -sum(balances.values())
+    transfers = settle(balances)
+    residuals = _apply_settle(balances, transfers)
+    assert all(abs(v) < 0.01 for v in residuals.values())
+    count = sum(len(v) for v in transfers.values())
+    nonzero = sum(1 for v in balances.values() if abs(v) >= 0.01)
+    assert count <= nonzero - 1
