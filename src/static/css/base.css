@@ -105,15 +105,14 @@ a { color: var(--primary); }
 
 
 .error-banner {
-    width: 100%;
-    background-color: #FF0000; /* Beijing red background */
-    color: #FFFFFF; /* White text */
-    text-align: center;
-    padding: 10px 0;
-    margin-bottom: 10px; /* Adds space between banners */
-    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2); /* Optional: adds a small shadow for depth */
-    position: relative;
+    background: #fee2e2;
+    color: var(--danger);
+    border-left: 4px solid var(--danger);
+    border-radius: var(--radius);
+    padding: 10px 14px;
+    margin-bottom: 12px;
 }
+.error-banner p { margin: 2px 0; }
 
 .board-hint { color: var(--text-muted); margin-top: -8px; }
 
