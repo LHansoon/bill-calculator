@@ -44,6 +44,25 @@ def settle(balances):
 
     transfers = []   # list of (debtor, creditor, cents)
 
+    # Exact-match pre-pass: a debtor and creditor whose amounts cancel
+    # exactly can always be settled with one transfer without hurting
+    # optimality elsewhere.
+    found = True
+    while found:
+        found = False
+        credit_owner = {}
+        for user, c in cents.items():
+            if c > 0 and c not in credit_owner:
+                credit_owner[c] = user
+        for user, c in list(cents.items()):
+            if c < 0 and -c in credit_owner:
+                creditor = credit_owner[-c]
+                transfers.append((user, creditor, -c))
+                del cents[user]
+                del cents[creditor]
+                found = True
+                break
+
     # Greedy: repeatedly settle the largest debtor against the largest
     # creditor. Each iteration zeroes at least one user, so it
     # terminates in <= n-1 transfers.

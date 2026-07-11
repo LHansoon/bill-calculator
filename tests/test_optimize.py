@@ -85,6 +85,15 @@ def test_settle_float_noise():
     assert all(abs(v) < 0.005 for v in residuals.values())
 
 
+def test_exact_match_pairs_settle_directly():
+    balances = {"a": -5.0, "b": 5.0, "c": -7.0, "d": 7.0}
+    transfers = settle(balances)
+    count = sum(len(v) for v in transfers.values())
+    assert count == 2                     # naive greedy could do 3
+    assert transfers["a"] == {"b": 5.0}
+    assert transfers["c"] == {"d": 7.0}
+
+
 def test_settle_large_random_terminates():
     rng = random.Random(42)
     balances = {f"u{i}": rng.randint(-500, 500) / 1.0
