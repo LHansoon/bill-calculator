@@ -135,8 +135,7 @@ def start_mission():
                              event_summary=event_summary,
                              sheet_id=app.config.get("sheet_id"),
                              missing_column_dict=missing_column_dict,
-                             report_value=user_df_past_30_days,
-                             emails={"hanson": "sample@gmail.com"})
+                             report_value=user_df_past_30_days)
     return result, 200
 
 

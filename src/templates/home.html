@@ -172,9 +172,6 @@
     let js_value = {{ recommended_result|tojson }};
     let js_report_value = {{ report_value|tojson }};
     let js_total_summary = {{ summary|tojson }};
-    let js_emails = {{ emails|tojson }};
-
-    console.log(js_value);
 </script>
 <script src="{{url_for('static', filename='func.js')}}"></script>
 <script src="{{url_for('static', filename='ui.js')}}"></script>

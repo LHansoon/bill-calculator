@@ -128,9 +128,6 @@ function generate_report(report_data) {
                 </div>
             </div>
         `;
-        //     The following code should be added into div row-main
-        //     <input type="email" value="${js_emails[key]}" />
-        //     <button>Action</button>
     }
 
     grand_total = Math.round(grand_total * 100) / 100;
