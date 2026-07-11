@@ -56,28 +56,29 @@ a { color: var(--primary); }
 
 
 #billboard > .chats {
-    overflow-y: scroll;
-    display: block;
-    width: 100%;
-    height: 220px;
-    border-style: solid;
+    overflow-y: auto;
+    height: 240px;
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    background: var(--surface);
+    padding: 10px;
     margin-bottom: 10px;
 }
-
-#chat-post-form > #chat-name{
-    width: 6em;
-}
-#chat-post-form > #chat-message{
-    width: 30em;
-}
-
-.chat-entry > .chat-ts {
+.chat-entry { margin-bottom: 10px; }
+.chat-meta .chat-name { color: var(--primary); font-weight: 600; }
+.chat-meta .chat-ts {
+    color: var(--text-muted);
+    font-size: 12px;
     font-style: italic;
+    margin-left: 6px;
 }
-.chat-entry > .chat-name {
-    color: blue;
-    font-weight: bold;
-}
+#chat-post-form { display: flex; gap: 8px; }
+#chat-post-form #chat-name { width: 7em; flex: none; }
+#chat-post-form #chat-message { flex: 1; }
+
+#pay-form label { color: var(--text-muted); font-size: 13px; }
+#pay-form select, #pay-form input { margin: 4px 0 10px; width: 100%; }
+#pay-form button { width: 100%; }
 
 .loader {
     vertical-align: middle;

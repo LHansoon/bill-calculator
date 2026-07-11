@@ -110,8 +110,13 @@ function update_chat_box(message) {
     chat_box.innerHTML = "";
     for (let i = 0; i < message.length; i++){
         let chat_entry = `
-            <div class="chat-entry"><a class="chat-ts">${message[i]["ts"]}</a> == <a class="chat-name">${message[i]["name"]}</a>: <a class="chat-message">${message[i]["message"]}</a></div>
-        `;
+            <div class="chat-entry">
+                <div class="chat-meta">
+                    <a class="chat-name">${message[i]["name"]}</a>
+                    <a class="chat-ts">${message[i]["ts"]}</a>
+                </div>
+                <div class="chat-message">${message[i]["message"]}</div>
+            </div>`;
         chat_box.innerHTML += chat_entry;
     }
     chat_box.scrollTop = chat_box.scrollHeight;
