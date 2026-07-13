@@ -63,8 +63,7 @@ function populate_content(result) {
         transfer_count += Object.keys(result[user]).length;
     }
 
-    let html = `<h2>当前欠款状况</h2>
-        <p class="board-hint">${transfer_count} transfer(s) needed to settle up</p>`;
+    let html = `<p class="board-hint">${transfer_count} transfer(s) needed to settle up</p>`;
 
     for (let user in result) {
         let sub_users = "";
