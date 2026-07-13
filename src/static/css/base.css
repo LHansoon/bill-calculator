@@ -149,14 +149,17 @@ a { color: var(--primary); }
     font-size: 12px;
 }
 
-.placeholder {
-    display: inline-block;
-    min-width: 100px;
-    text-align: center;
-    border: 2px dashed var(--primary);
-    border-radius: 999px;
-    color: var(--primary);
-    padding: 4px 12px;
+.dropzone.drag-over {
+    background: #0a246a;
+    color: #ffffff;
+    outline: 1px dotted #fff;
+    outline-offset: -4px;
+}
+.dropzone.drag-over strong { color: #ffffff; }
+
+.dropzone.drag-source {
+    outline: 1px dotted #000;
+    outline-offset: -4px;
 }
 
 #page-header {

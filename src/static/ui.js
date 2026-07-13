@@ -124,79 +124,88 @@ function safe_add(js_value, from, to, amount) {
 
 
 function load_listeners(js_value) {
-    const draggable_placeholder = document.createElement("a")
-    draggable_placeholder.setAttribute("class", "placeholder")
-    draggable_placeholder.innerText = "here"
-
     let curr_been_dragged = null;
     let curr_been_dragged_parent = null;
+    let dropzones = document.getElementsByClassName("dropzone");
+
+    function reset_drag_state() {
+        curr_been_dragged = null;
+        curr_been_dragged_parent = null;
+        for (let i = 0; i < dropzones.length; i++) {
+            dropzones[i].classList.remove("drag-over", "drag-source");
+        }
+    }
+
     let draggable = document.getElementsByClassName("draggable");
     for (let i = 0; i < draggable.length; i++) {
         draggable[i].addEventListener("dragstart", (event) => {
-            curr_been_dragged = event.target;
-            curr_been_dragged_parent = event.target.parentElement.parentElement;
+            curr_been_dragged = event.currentTarget;
+            curr_been_dragged_parent = event.currentTarget.closest(".user_entry_container");
+            curr_been_dragged_parent.classList.add("drag-source");
+            event.dataTransfer.effectAllowed = "move";
         });
+        draggable[i].addEventListener("dragend", reset_drag_state);
     }
 
-    let dropzones = document.getElementsByClassName("dropzone");
     for (let i = 0; i < dropzones.length; i++) {
-        dropzones[i].addEventListener("dragenter", (event) => {
+        const zone = dropzones[i];
+        // dragenter/dragleave fire on every child boundary; only the
+        // outermost pair may toggle the highlight
+        let drag_depth = 0;
+        zone.addEventListener("dragenter", (event) => {
             event.preventDefault();
-            if (event.target.classList.contains("dropzone")) {
-                event.target.querySelector(".sub_user_entry_container").appendChild(draggable_placeholder);
+            drag_depth++;
+            if (drag_depth === 1 && zone !== curr_been_dragged_parent) {
+                zone.classList.add("drag-over");
             }
         });
-        dropzones[i].addEventListener("dragleave", (event) => {
-            if (event.target.classList.contains("dropzone")) {
-                try{
-                    event.target.querySelector(".sub_user_entry_container").removeChild(draggable_placeholder);
-                }
-                catch (e) {
-                    //pass
-                }
-
+        zone.addEventListener("dragleave", () => {
+            drag_depth--;
+            if (drag_depth === 0) {
+                zone.classList.remove("drag-over");
             }
         });
-        dropzones[i].addEventListener("dragover", (event) => {
+        zone.addEventListener("dragover", (event) => {
             event.preventDefault();
-
+            event.dataTransfer.dropEffect = "move";
         });
-        dropzones[i].addEventListener("drop", (event) => {
+        zone.addEventListener("drop", (event) => {
             event.preventDefault();
-            console.log("2")
-            if (event.target.classList.contains("dropzone")) {
-                let target_from = event.target.getAttribute("data-user");
-                let target_to = curr_been_dragged.getAttribute("data-user");
-                let amount = Number(curr_been_dragged.getAttribute("data-amount"));
-                let source_from = curr_been_dragged_parent.getAttribute("data-user");
-                let source_to = target_to;
+            drag_depth = 0;
+            if (curr_been_dragged === null) {
+                return;
+            }
+            let target_from = zone.getAttribute("data-user");
+            let target_to = curr_been_dragged.getAttribute("data-user");
+            let amount = Number(curr_been_dragged.getAttribute("data-amount"));
+            let source_from = curr_been_dragged_parent.getAttribute("data-user");
+            let source_to = target_to;
+            reset_drag_state();
 
-                if (source_to === target_from || source_from === target_from) {
-                    alert("你想干嘛");
-                } else {
-                    if (js_value[target_from][source_to] != null) {
+            if (source_to === target_from || source_from === target_from) {
+                alert("你想干嘛");
+            } else {
+                if (js_value[target_from][source_to] != null) {
+                    safe_add(js_value, target_from, source_to, amount);
+                    safe_add(js_value, source_from, target_from, amount);
+                }else if (js_value[target_from][source_from] != null) {
+                    if (js_value[target_from][source_from] < amount) {
                         safe_add(js_value, target_from, source_to, amount);
-                        safe_add(js_value, source_from, target_from, amount);
-                    }else if (js_value[target_from][source_from] != null) {
-                        if (js_value[target_from][source_from] < amount) {
-                            safe_add(js_value, target_from, source_to, amount);
-                            safe_add(js_value, source_from, target_from, amount - js_value[target_from][source_from]);
-                            delete js_value[target_from][source_from];
-                        } else {
-                            safe_add(js_value, target_from, source_from, -amount);
-                            safe_add(js_value, target_from, source_to, amount);
-                            delete js_value[source_from][source_to];
-                        }
+                        safe_add(js_value, source_from, target_from, amount - js_value[target_from][source_from]);
+                        delete js_value[target_from][source_from];
                     } else {
-                        safe_add(js_value, target_from, target_to, amount);
-                        safe_add(js_value, source_from, target_from, amount);
+                        safe_add(js_value, target_from, source_from, -amount);
+                        safe_add(js_value, target_from, source_to, amount);
+                        delete js_value[source_from][source_to];
                     }
-
-                    delete js_value[source_from][source_to];
-                    console.log(js_value);
+                } else {
+                    safe_add(js_value, target_from, target_to, amount);
+                    safe_add(js_value, source_from, target_from, amount);
                 }
-                populate_content(js_value);
+
+                delete js_value[source_from][source_to];
             }
+            populate_content(js_value);
         });
     }
 }
