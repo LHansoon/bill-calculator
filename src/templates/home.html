@@ -31,6 +31,10 @@
 
 <div class="overlay" id="report-overlay">
     <div class="modal">
+        <div class="title-bar">
+            <span>Report</span>
+            <button class="close-btn" onclick="closeModal()" aria-label="Close">×</button>
+        </div>
         <div class="row-main">
             <span>
                 <select id="range-preset">
@@ -44,7 +48,6 @@
                 <input type="date" id="range-end" class="hidden">
                 <button onclick="refreshModal()">Refresh</button>
             </span>
-            <button class="close-btn" onclick="closeModal()">Close</button>
         </div>
 
         <div id="email-list-container">
@@ -56,6 +59,7 @@
 
 <div id="main-container">
     <div id="major-info" class="card">
+        <div class="title-bar">当前欠款状况</div>
         <div id="major-content">
 
         </div>
@@ -72,7 +76,7 @@
 
     <div id="right-section">
         <div id="pay-section" class="card">
-            <h2>Add transaction</h2>
+            <div class="title-bar">Add transaction</div>
             <form id="pay-form">
                 <label for="from">From:</label><br>
                 <select id="from" name="from">
@@ -92,6 +96,7 @@
             </form>
         </div>
         <div id="billboard" class="card">
+            <div class="title-bar">Billboard</div>
             <div class="chats" id="chat">
 
             </div>
