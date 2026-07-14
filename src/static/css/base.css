@@ -295,3 +295,41 @@ a { color: #0a246a; }
 }
 
 .hidden { display: none; }
+
+
+/* ---- login dialog + user view ---- */
+.login-desktop {
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    gap: 16px;
+}
+.login-dialog { width: 380px; max-width: 100%; }
+.login-grid {
+    display: grid;
+    grid-template-columns: 90px 1fr;
+    gap: 8px 10px;
+    align-items: center;
+    margin-bottom: 12px;
+}
+.login-grid label { text-align: right; }
+.login-buttons { display: flex; justify-content: flex-end; gap: 8px; }
+.login-buttons button { min-width: 70px; }
+.logon-message { margin: 4px 2px; }
+.title-bar form { display: flex; }
+
+.debt-row { display: flex; justify-content: space-between; margin: 2px 0; }
+.empty-msg { text-align: center; color: var(--text-muted); }
+
+
+/* ---- access control dialog ---- */
+#header-links { display: flex; gap: 12px; align-items: center; }
+.access-modal { width: min(460px, 92vw); }
+#key-create-form { display: flex; gap: 6px; margin-bottom: 8px; }
+#key-create-form input[type="text"] { flex: 1; }
+#key-new-url { width: 100%; margin-bottom: 8px; }
+.key-row { display: flex; align-items: center; gap: 8px; margin: 4px 0; }
+.key-row .key-label { flex: 1; }
+.key-row.key-revoked { color: var(--text-muted); }

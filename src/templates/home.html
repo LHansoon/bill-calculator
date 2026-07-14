@@ -13,9 +13,13 @@
 
 <header id="page-header">
     <h1>Bill Calculator</h1>
-    <a target="_blank"
-       href="https://docs.google.com/spreadsheets/d/{{sheet_id}}/edit#gid=0">
-        Open Google Sheet ↗</a>
+    <span id="header-links">
+        <a target="_blank"
+           href="https://docs.google.com/spreadsheets/d/{{sheet_id}}/edit#gid=0">
+            Open Google Sheet ↗</a>
+        <button onclick="openAccessModal()">Access control</button>
+        <a href="/logout">Log off</a>
+    </span>
 </header>
 
 {% if missing_column_dict %}
@@ -110,6 +114,21 @@
     </div>
 </div>
 
+<div class="overlay" id="access-overlay">
+    <div class="modal access-modal">
+        <div class="title-bar">
+            <span>Access control</span>
+            <button class="close-btn" onclick="closeAccessModal()" aria-label="Close">×</button>
+        </div>
+        <form id="key-create-form">
+            <input type="text" id="key-name" name="name" placeholder="user name">
+            <input type="submit" value="Create link">
+        </form>
+        <input type="text" id="key-new-url" class="hidden" readonly>
+        <div id="key-list"></div>
+    </div>
+</div>
+
 <section class="page-section">
 <h2 class="collapsible summary-btn">Summary</h2>
 <div class="collapsible-container" style="display: none">
@@ -181,6 +200,7 @@
 <script src="{{url_for('static', filename='func.js')}}"></script>
 <script src="{{url_for('static', filename='ui.js')}}"></script>
 <script src="{{url_for('static', filename='report_sub_page.js')}}"></script>
+<script src="{{url_for('static', filename='access_control.js')}}"></script>
 
 
 </body>

@@ -1,0 +1,39 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Log On to Bill Calculator</title>
+    <link rel="stylesheet" href="{{url_for('static', filename='css/base.css')}}">
+</head>
+<body class="login-desktop">
+
+{% if error %}
+    <div class="card login-dialog">
+        <div class="title-bar">Logon Message</div>
+        <p class="logon-message">The system could not log you on. Make sure
+            your password is correct.</p>
+    </div>
+{% endif %}
+
+<div class="card login-dialog">
+    <div class="title-bar">Log On to Bill Calculator</div>
+    <form method="post" action="/login">
+        <div class="login-grid">
+            <label for="login-role">Log on as:</label>
+            <select id="login-role" name="role">
+                <option value="user" selected>user</option>
+                <option value="admin">admin</option>
+            </select>
+            <label for="login-password">Password:</label>
+            <input type="password" id="login-password" name="password" autofocus>
+        </div>
+        <div class="login-buttons">
+            <button type="submit">OK</button>
+            <button type="reset">Cancel</button>
+        </div>
+    </form>
+</div>
+
+</body>
+</html>

@@ -6,11 +6,13 @@ if not hasattr(importlib.metadata, 'packages_distributions'):
 import json
 import logging
 import html
+import secrets
 import time
 
-from flask import Flask, render_template, request, Response
+from flask import Flask, render_template, request, Response, redirect, session
+import auth
 import decorators
-from datetime import datetime
+from datetime import datetime, timedelta
 import sys
 import gspread
 from oauth2client.service_account import ServiceAccountCredentials
@@ -22,6 +24,11 @@ from Content import Content
 
 app = Flask(__name__, template_folder="templates")
 logger = app.logger
+
+# SameSite=Lax is the CSRF story for the cookie-authed POSTs.
+# secret_key itself is set in __main__ from config (tests set their own).
+app.config["SESSION_COOKIE_SAMESITE"] = "Lax"
+app.config["PERMANENT_SESSION_LIFETIME"] = timedelta(days=30)
 
 global last_update_ts
 global sheet_obj
@@ -46,11 +53,13 @@ def unique_dict_key(list_a, list_b):
 
 
 @app.route("/process", methods=["GET"])
+@auth.require_admin_api
 def process_mission():
     pass
 
 
 @app.route("/chat-post", methods=["POST"])
+@auth.require_admin_api
 def post_chat():
     json_request = request.json
     name = json_request.get("name").strip()
@@ -69,6 +78,7 @@ def post_chat():
 
 
 @app.route("/chat-stream", methods=["GET"])
+@auth.require_admin_api
 def chat_stream():
     # Resolve config OUTSIDE the generator: the generator body runs
     # after the request context is gone.
@@ -89,6 +99,7 @@ def chat_stream():
 
 
 @app.route("/get-report", methods=["GET"])
+@auth.require_admin_api
 def get_report():
     start_raw = request.args.get("start_time")
     end_raw = request.args.get("end_time")
@@ -116,6 +127,7 @@ def get_report():
 
 
 @app.route("/", methods=["GET"])
+@auth.require_admin
 def start_mission():
     get_sheet()
     result, user_stat, recommended_result, missing_column_dict = processed_cache
@@ -139,8 +151,100 @@ def start_mission():
     return result, 200
 
 
-@decorators.router_wrapper
+@app.route("/login", methods=["GET"])
+def login_page():
+    if session.get("role") == "admin":
+        return redirect("/")
+    return render_template("login.html", error=False)
+
+
+@app.route("/login", methods=["POST"])
+def login_submit():
+    password = request.form.get("password", "")
+    role = request.form.get("role", "user")
+
+    if role == "admin":
+        if password != "" and password == app.config.get("admin_key"):
+            session["role"] = "admin"
+            session.permanent = True
+            return redirect("/")
+    else:
+        # for users the "password" IS their key; the form is the
+        # fallback path for someone who lost the link but kept the key
+        if auth.resolve_key(password) is not None:
+            return redirect(f"/u/{password}")
+
+    time.sleep(0.5)  # cheap brute-force damper
+    return render_template("login.html", error=True)
+
+
+@app.route("/logout", methods=["GET"])
+def logout():
+    session.clear()
+    return redirect("/login")
+
+
+@app.route("/u/<key>", methods=["GET"])
+def user_view(key):
+    name = auth.resolve_key(key)
+    if name is None:
+        return redirect("/login")
+
+    get_sheet()
+    _, _, recommended_result, _ = processed_cache
+
+    debts = recommended_result.get(name, {})
+    total = round(sum(debts.values()), 2)
+    return render_template("user_view.html", name=name, debts=debts,
+                           total=total)
+
+
+def _key_url(key):
+    base = app.config.get("external_url") or request.host_url
+    return base.rstrip("/") + "/u/" + key
+
+
+@app.route("/admin/keys", methods=["GET"])
+@auth.require_admin_api
+def admin_list_keys():
+    keys = [{**entry, "url": _key_url(entry["key"])}
+            for entry in auth.list_keys()]
+    return {"result": True, "keys": keys}, 200
+
+
+@app.route("/admin/keys", methods=["POST"])
+@auth.require_admin_api
+def admin_create_key():
+    name = (request.json.get("name") or "").strip()
+    if name == "":
+        return {"result": False, "message": "name is empty."}, 400
+
+    key = auth.create_key(name)
+    entry = next(e for e in auth.list_keys() if e["key"] == key)
+    return {"result": True, **entry, "url": _key_url(key)}, 200
+
+
+@app.route("/admin/keys/revoke", methods=["POST"])
+@auth.require_admin_api
+def admin_revoke_key():
+    key = request.json.get("key")
+    if not auth.revoke_key(key):
+        return {"result": False, "message": "unknown key"}, 400
+    return {"result": True, "message": "Success"}, 200
+
+
+@app.route("/admin/keys/delete", methods=["POST"])
+@auth.require_admin_api
+def admin_delete_key():
+    key = request.json.get("key")
+    if not auth.delete_key(key):
+        return {"result": False, "message": "unknown key"}, 400
+    return {"result": True, "message": "Success"}, 200
+
+
 @app.route("/pay", methods=["POST"])
+@auth.require_admin_api
+@decorators.router_wrapper
 def process_pay():
     json_request = request.json
 
@@ -211,7 +315,27 @@ if __name__ == '__main__':
 
     args = sys.argv
     app.logger.setLevel(logging.INFO)
-    app.config.update(json.loads(open("config.json", encoding="utf-8").read()))
+
+    cfg = json.loads(open("config.json", encoding="utf-8").read())
+
+    # First-run: generate missing secrets and persist them, so a restart
+    # does not rotate them (which would log everyone out / lock you out).
+    cfg_changed = False
+    if not cfg.get("flask_secret"):
+        cfg["flask_secret"] = secrets.token_hex(32)
+        cfg_changed = True
+    if not cfg.get("admin_key"):
+        cfg["admin_key"] = secrets.token_urlsafe(12)
+        app.logger.warning(
+            "generated admin key: %s — change it in config.json "
+            "if you want your own", cfg["admin_key"])
+        cfg_changed = True
+    if cfg_changed:
+        with open("config.json", "w", encoding="utf-8") as f:
+            json.dump(cfg, f, ensure_ascii=False, indent=4)
+
+    app.config.update(cfg)
+    app.secret_key = app.config["flask_secret"]
     file_name = app.config.get("cred_path")
 
     # initialize some of the vars
@@ -219,4 +343,6 @@ if __name__ == '__main__':
     last_update_ts = None
     processed_cache = None
 
-    app.run(host="0.0.0.0", port=app.config.get("port"), debug=True)
+    # never run the Werkzeug debugger on the internet (RCE console)
+    app.run(host="0.0.0.0", port=app.config.get("port"),
+            debug=app.config.get("debug", False))
