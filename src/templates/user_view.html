@@ -1,0 +1,35 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Bill Calculator</title>
+    <link rel="stylesheet" href="{{url_for('static', filename='css/base.css')}}">
+</head>
+<body class="login-desktop">
+
+<div class="card login-dialog">
+    <div class="title-bar">
+        <span>当前欠款状况 — {{ name }}</span>
+        <form method="get" action="/login">
+            <button class="close-btn" aria-label="Close">×</button>
+        </form>
+    </div>
+    {% if debts %}
+        <p>You owe:</p>
+        <div class="user_entry_container">
+            {% for creditor, amount in debts.items() %}
+                <div class="debt-row">
+                    <span>{{ creditor }}</span>
+                    <span>${{ "%.2f"|format(amount) }}</span>
+                </div>
+            {% endfor %}
+        </div>
+        <p>Total: ${{ "%.2f"|format(total) }}</p>
+    {% else %}
+        <p class="empty-msg">You owe nothing.</p>
+    {% endif %}
+</div>
+
+</body>
+</html>
