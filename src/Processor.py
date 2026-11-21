@@ -204,7 +204,7 @@ def get_summary(user_statistics):
             del current_month_summary[user]
         if previous_month_summary[user] == 0:
             del previous_month_summary[user]
-        if past_30_days_summary == 0:
+        if past_30_days_summary[user] == 0:
             del past_30_days_summary[user]
 
         user_tags = user_df["event_tag"].unique().tolist()
