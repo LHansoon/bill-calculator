@@ -229,10 +229,6 @@ def get_optimized(result, content):
     return settle(user_balance)
 
 
-def parse_row(row):
-    pass
-
-
 class Processor:
     def process(self, content: Content, tax_rate: float):
         CONDITION_CHECK_COLS = ["from", "to", "price", "who", "type"]

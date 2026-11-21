@@ -45,19 +45,6 @@ GOOGLE_SCOPE = [
 ]
 
 
-def unique_dict_key(list_a, list_b):
-    result_list = list(list_a.keys())
-    result_list.extend(list(list_b.keys()))
-    result_list = list(set(result_list))
-    return result_list
-
-
-@app.route("/process", methods=["GET"])
-@auth.require_admin_api
-def process_mission():
-    pass
-
-
 @app.route("/chat-post", methods=["POST"])
 @auth.require_admin_api
 def post_chat():
@@ -345,4 +332,5 @@ if __name__ == '__main__':
 
     # never run the Werkzeug debugger on the internet (RCE console)
     app.run(host="0.0.0.0", port=app.config.get("port"),
-            debug=app.config.get("debug", False))
+            debug=app.config.get("debug", False),
+            threaded=True)  # /chat-stream (SSE) holds one thread per tab
