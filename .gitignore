@@ -132,3 +132,7 @@ dmypy.json
 src/credentials.json
 src/config.json
 src/data/
+
+# Untracked experiments (contain credentials) — never commit
+infra/
+lambda_src/
