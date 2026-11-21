@@ -1,9 +1,12 @@
 from datetime import date, timedelta
 
 import Content
+import logging
 import re
 
 import pandas as pd
+
+logger = logging.getLogger(__name__)
 
 _USER_SHARE_RE = re.compile(r"([^\r\n\t\f\v,()]+)(?:\((\d*.?\d*)\))?")
 
@@ -298,14 +301,13 @@ class Processor:
                             try:
                                 share = float(share)
                             except ValueError:
-                                # 说句实话，这里如果真的有value error的话应该要prompt一个提示。。像现在这样默认1这辈子都找不到哪里有问题。。
-                                pass
+                                logger.warning(
+                                    "row %s: cannot parse share %r in who=%r; "
+                                    "defaulting to 1", row_num, share, who)
+                                share = 1
                         else:
                             share = 1
-                        try:
-                            total_share += share
-                        except Exception as e:
-                            print(e)
+                        total_share += share
                         user_share_pair[name] = share
                 else:
                     users_in_who = who.split(",")
@@ -321,8 +323,12 @@ class Processor:
                     if user != person_paid_for_it:
                         try:
                             result[user][person_paid_for_it] += price_each_user
-                        except Exception as e:
-                            print(3)
+                        except KeyError:
+                            # keep the page up; one bad row must not 500 "/"
+                            logger.warning(
+                                "row %s: unknown user %r or payer %r; "
+                                "debt of %.2f skipped", row_num, user,
+                                person_paid_for_it, price_each_user)
 
                     user_stat["date"].append(row["date"])
                     user_stat["paid_by"].append(row["from"])
