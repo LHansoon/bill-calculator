@@ -50,7 +50,8 @@ function append_pay_warning(element) {
 }
 
 function remove_loader(element) {
-    let loaders = element.parentElement.getElementsByClassName("loader");
+    // copy first: the live HTMLCollection shrinks as loaders are removed
+    let loaders = Array.from(element.parentElement.getElementsByClassName("loader"));
     for (let i = 0; i < loaders.length; i++){
         loaders[i].remove();
     }
