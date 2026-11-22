@@ -174,6 +174,28 @@ def get_user_report(user_statistics, start_ts, end_ts):
     return summary
 
 
+def get_transactions(user_statistics, start_ts, end_ts):
+    """Rows of user_statistics inside [start_ts, end_ts], newest first.
+
+    One row per sharer of a buy, so a bill split three ways appears as
+    three rows and "amount" is that person's share.
+    """
+    in_range = user_statistics.loc[(user_statistics['date'] >= start_ts) & (user_statistics['date'] <= end_ts)]
+    in_range = in_range.sort_values("date", ascending=False, kind="stable")
+    return [
+        {
+            "date": row["date"].isoformat(),
+            "paid_by": row["paid_by"],
+            "user": row["user"],
+            "merchant": row["merchant"],
+            "category": row["category"],
+            "event_tag": row["event_tag"],
+            "amount": round(float(row["amount"]), 2),
+        }
+        for _, row in in_range.iterrows()
+    ]
+
+
 def get_summary(user_statistics):
     total_summary = dict()
     current_month_summary = dict()
