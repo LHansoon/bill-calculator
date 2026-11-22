@@ -116,7 +116,8 @@ function safe_add(js_value, from, to, amount) {
             js_value[from][to] = amount;
         }
 
-        if (js_value[from][to] === 0){
+        // float sums of 2-decimal amounts rarely land on exactly 0
+        if (Math.abs(js_value[from][to]) < 0.005){
             delete js_value[from][to];
         }
     } else {
