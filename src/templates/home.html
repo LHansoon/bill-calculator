@@ -15,7 +15,7 @@
     <div class="error-banner">
         {% for key, value in missing_column_dict.items() %}
             <p>
-                missing col on line {{key}}: {{ value }}
+                sheet line {{key}}: {{ value|join('; ') }}
             </p>
         {% endfor %}
     </div>
