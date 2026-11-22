@@ -11,13 +11,6 @@
 </head>
 <body>
 
-<header id="page-header">
-    <h1>Bill Calculator</h1>
-    <a target="_blank"
-       href="https://docs.google.com/spreadsheets/d/{{sheet_id}}/edit#gid=0">
-        Open Google Sheet ↗</a>
-</header>
-
 {% if missing_column_dict %}
     <div class="error-banner">
         {% for key, value in missing_column_dict.items() %}
@@ -55,7 +48,7 @@
 
 
 <div id="main-container">
-    <div id="major-info" class="card">
+    <div id="major-info">
         <div id="major-content">
 
         </div>
@@ -65,13 +58,14 @@
                 <input type="submit" value="Add user">
             </form>
         </div>
+        <hr>
         <div>
             <button class="open-btn" onclick="openModal()">Report</button>
         </div>
     </div>
 
     <div id="right-section">
-        <div id="pay-section" class="card">
+        <div id="pay-section">
             <h2>Add transaction</h2>
             <form id="pay-form">
                 <label for="from">From:</label><br>
@@ -91,7 +85,8 @@
                 <button id="pay_button">add transaction</button>
             </form>
         </div>
-        <div id="billboard" class="card">
+        <hr>
+        <div id="billboard">
             <div class="chats" id="chat">
 
             </div>
@@ -105,7 +100,8 @@
     </div>
 </div>
 
-<section class="page-section">
+<hr>
+
 <h2 class="collapsible summary-btn">Summary</h2>
 <div class="collapsible-container" style="display: none">
     <div class="summary-block">
@@ -136,9 +132,9 @@
     </div>
 
 </div>
-</section>
 
-<section class="page-section">
+<hr>
+
 <div id="event-summary-section">
     {% for key, value in event_summary.items() %}
 
@@ -164,7 +160,25 @@
 
 
 </div>
-</section>
+
+
+<hr>
+
+
+{#<div id="example"></div>#}
+
+
+
+<div id="sheet_viewer">
+{#    <p>If no permission, request for the permission, then refresh</p>#}
+    <a target="_blank" href="https://docs.google.com/spreadsheets/d/{{sheet_id}}/edit#gid=0">https://docs.google.com/spreadsheets/d/{{sheet_id}}/edit#gid=0</a>
+{#    <iframe#}
+{#            src="https://docs.google.com/spreadsheets/d/{{sheet_id}}/preview"#}
+{#            height="100%"#}
+{#            width="100%"#}
+{#    ></iframe>#}
+
+</div>
 
 
 <script>
@@ -172,6 +186,8 @@
     let js_value = {{ recommended_result|tojson }};
     let js_report_value = {{ report_value|tojson }};
     let js_total_summary = {{ summary|tojson }};
+
+    console.log(js_value);
 </script>
 <script src="{{url_for('static', filename='func.js')}}"></script>
 <script src="{{url_for('static', filename='ui.js')}}"></script>
@@ -179,4 +195,6 @@
 
 
 </body>
+
+
 </html>
