@@ -44,3 +44,20 @@ def test_valid_range_200(monkeypatch, sample_records):
     body = resp.get_json()
     assert body["result"] is True
     assert body["message"]["bob"]["total_purchase"] == {"dining": 30.0}
+
+
+def test_plain_dates_accepted_and_inclusive(monkeypatch, sample_records):
+    client = _client(monkeypatch, sample_records)
+    resp = client.get("/get-report?start_time=2025-02-10&end_time=2025-02-10")
+    assert resp.status_code == 200
+    body = resp.get_json()
+    assert body["message"]["bob"]["total_purchase"] == {"dining": 30.0}
+    assert {t["user"] for t in body["transactions"]} == {"alice", "bob"}
+
+
+def test_legacy_iso_datetimes_use_date_part(monkeypatch, sample_records):
+    client = _client(monkeypatch, sample_records)
+    resp = client.get("/get-report?start_time=2025-02-10T23:00:00-04:00"
+                      "&end_time=2025-02-10T23:59:59Z")
+    assert resp.status_code == 200
+    assert len(resp.get_json()["transactions"]) == 2

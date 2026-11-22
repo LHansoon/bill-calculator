@@ -10,7 +10,7 @@ import time
 
 from flask import Flask, render_template, request, Response
 import decorators
-from datetime import datetime
+from datetime import date, datetime
 import sys
 import gspread
 from oauth2client.service_account import ServiceAccountCredentials
@@ -84,10 +84,11 @@ def get_report():
         return {"result": False,
                 "message": "start_time and end_time are required"}, 400
     try:
-        start_time = datetime.fromisoformat(
-            start_raw.replace("Z", "+00:00")).date()
-        end_time = datetime.fromisoformat(
-            end_raw.replace("Z", "+00:00")).date()
+        # Calendar dates, not instants: the frontend sends local
+        # YYYY-MM-DD. Older clients send full ISO datetimes; only the
+        # date part is used so no timezone shift can move the range.
+        start_time = date.fromisoformat(start_raw[:10])
+        end_time = date.fromisoformat(end_raw[:10])
     except ValueError:
         return {"result": False,
                 "message": "start_time/end_time must be ISO 8601"}, 400
@@ -99,8 +100,10 @@ def get_report():
     _, user_stat, _, _ = processed_cache
 
     report = Processor.get_user_report(user_stat, start_time, end_time)
+    transactions = Processor.get_transactions(user_stat, start_time, end_time)
 
-    return {"result": True, "message": report}, 200
+    return {"result": True, "message": report,
+            "transactions": transactions}, 200
 
 
 @app.route("/", methods=["GET"])

@@ -90,6 +90,35 @@ button {
 .report-grand-total {
     border-top: 2px solid #ddd;
 }
+.report-error {
+    text-align: center;
+    color: #e74c3c;
+}
+.report-note {
+    color: #777;
+    font-size: 12px;
+}
+#range-label {
+    color: #777;
+    margin-left: 6px;
+}
+
+.report-tx {
+    width: 100%;
+    border-collapse: collapse;
+}
+.report-tx th, .report-tx td {
+    border-bottom: 1px solid #ddd;
+    padding: 4px 6px;
+    text-align: left;
+}
+.report-tx th {
+    cursor: pointer;
+    user-select: none;
+}
+.report-tx .num {
+    text-align: right;
+}
 
 /*.open-btn {*/
 /*    background: #3498db;*/
