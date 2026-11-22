@@ -35,9 +35,11 @@ form_submit_btn.onclick = function(event){
     let to = formDataDict["to"];
     let amount = Number(formDataDict["amount"]);
 
-    if (amount === 0){
-        alert("no 0");
-        return;
+    // NaN slipped through the old `=== 0` check and wrote text into the
+    // sheet; `return false` also stops the form from reloading the page
+    if (!Number.isFinite(amount) || amount <= 0){
+        alert("amount must be a positive number");
+        return false;
     }
 
     append_loader(form_submit_btn);
@@ -46,8 +48,8 @@ form_submit_btn.onclick = function(event){
 
     xhr.setRequestHeader("Content-Type", "application/json");
 
-    //send the form data
-    xhr.send(JSON.stringify(Object.fromEntries(formData)));
+    //send the parsed number, not the raw text
+    xhr.send(JSON.stringify({"from": from, "to": to, "amount": amount}));
 
     xhr.onreadystatechange = function() {
         if (this.readyState === 4) {
