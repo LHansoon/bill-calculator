@@ -62,33 +62,35 @@ function populate_content(result) {
     for (let user in result) {
         transfer_count += Object.keys(result[user]).length;
     }
-
-    let html = `<h2>当前欠款状况</h2>
-        <p class="board-hint">${transfer_count} transfer(s) needed to settle up</p>`;
-
+    document.getElementById("major-content").innerHTML =
+        `<h2>现在呢就是这么个状况：</h2><p>${transfer_count} transfer(s) needed to settle up</p>`;
     for (let user in result) {
-        let sub_users = "";
-        for (let sub_user in result[user]) {
+        let sub_users = ""
+        for (let sub_user in result[user]){
             let sub_user_amount = Number(result[user][sub_user]).toFixed(2);
+
+            let btn = `
+                <button class="clear_debt_btn" data-from="${user}" data-to="${sub_user}" data-amount="${sub_user_amount}" onclick="clearDebt(this)">还钱</button>
+            `;
+
             sub_users += `
-                <a class="draggable pill" draggable="true"
-                   data-user="${sub_user}" data-amount="${sub_user_amount}">
-                    <span>${sub_user} · $${sub_user_amount}</span>
-                    <button class="clear_debt_btn" data-from="${user}"
-                            data-to="${sub_user}" data-amount="${sub_user_amount}"
-                            onclick="clearDebt(this)">还钱</button>
-                </a>`;
+                <a class="draggable" draggable="true" data-user="${sub_user}" data-amount="${sub_user_amount}">"${sub_user}": ${sub_user_amount} ${btn}</a>
+            `;
         }
-        html += `
+
+
+        let user_entry = `
             <div class="user_entry_container dropzone" data-user="${user}">
-                <strong>${user}</strong> owes:
+                ${user} : { 
                 <div class="sub_user_entry_container">
                     ${sub_users}
-                </div>
-            </div>`;
+                </div> }
+            </div>
+        `.trim();
+
+        document.getElementById("major-content").innerHTML += user_entry;
     }
-    document.getElementById("major-content").innerHTML = html;
-    load_listeners(result);
+    load_listeners(result)
 }
 
 

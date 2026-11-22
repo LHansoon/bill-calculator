@@ -14,11 +14,7 @@ def _client(monkeypatch, sample_records):
     monkeypatch.setattr(app_module, "get_sheet",
                         lambda content=True: None)
     app_module.processed_cache = _fake_processed(sample_records)
-    app_module.app.secret_key = "test-secret"
-    client = app_module.app.test_client()
-    with client.session_transaction() as sess:
-        sess["role"] = "admin"
-    return client
+    return app_module.app.test_client()
 
 
 def test_missing_params_400(monkeypatch, sample_records):
