@@ -2,7 +2,6 @@ from datetime import date, timedelta
 
 import Content
 import logging
-import math
 import re
 
 import pandas as pd
@@ -255,59 +254,10 @@ def get_optimized(result, content):
     return settle(user_balance)
 
 
-def _parse_amount(value):
-    """Sheet cell -> finite float, or None if it is not a number."""
-    if isinstance(value, bool):
-        return None
-    if isinstance(value, (int, float)):
-        number = float(value)
-    else:
-        try:
-            number = float(str(value).strip())
-        except ValueError:
-            return None
-    return number if math.isfinite(number) else None
-
-
-def _parse_tax(flag, tax_rate):
-    """tax_flg cell -> rate, or None if it is not understood.
-    y/Y = configured rate; empty/n/N = no tax; a number = that rate."""
-    if not isinstance(flag, str):
-        return _parse_amount(flag)
-    text = flag.strip().lower()
-    if text in ("", "n"):
-        return 0
-    if text == "y":
-        return tax_rate
-    return _parse_amount(text)
-
-
-def _parse_who(who, row_num):
-    """'alice(2),bob' -> {name: share}. Blank names are dropped and a
-    repeated name gets the sum of its shares, so no part of the bill
-    is lost."""
-    shares = {}
-    for name, share in _USER_SHARE_RE.findall(who):
-        name = name.strip()
-        if name == "":
-            continue
-        share = share.strip()
-        if share == "":
-            share = 1
-        else:
-            try:
-                share = float(share)
-            except ValueError:
-                logger.warning(
-                    "row %s: cannot parse share %r in who=%r; "
-                    "defaulting to 1", row_num, share, who)
-                share = 1
-        shares[name] = shares.get(name, 0) + share
-    return shares
-
-
 class Processor:
     def process(self, content: Content, tax_rate: float):
+        CONDITION_CHECK_COLS = ["from", "to", "price", "who", "type"]
+
         stat_columns = ["date", "user", "amount", "event_tag"]
         user_stat = dict()
         user_stat["paid_by"] = []
@@ -334,103 +284,100 @@ class Processor:
             for sub_user in users:
                 result[user][sub_user] = 0
 
-        # raw process. A row with a problem goes to the error banner
-        # (missing_column_dict, keyed by sheet line) and is skipped, so
-        # one bad cell can never take the whole page down.
-        REQUIRED = {
-            "buy": ["from", "to", "price", "who"],
-            "pay": ["from", "to", "price"],
-            "debt_trans": ["from", "to", "price", "who"],
-            "debt_adj": ["from", "to", "price"],
-        }
-
-        def report(row_num, message):
-            missing_column_dict.setdefault(row_num, []).append(message)
-
+        # raw process
         for row_num, row in df.iterrows():
             # since row_num start with 0, and the actual line 0 is the title row
             row_num += 2
-            row_type = row["type"]
 
-            if row_type == "":
-                report(row_num, "missing type")
-                continue
-            if row_type not in REQUIRED:
-                report(row_num, f"unknown type '{row_type}'")
-                continue
+            if row["type"] == "":
+                missing_column_dict[row_num] = ["type"]
 
-            missing = [col for col in REQUIRED[row_type]
-                       if str(row[col]).strip() == ""]
-            if missing:
-                for col in missing:
-                    report(row_num, f"missing {col}")
-                continue
+            elif row["type"] == "buy":
+                missing_col_list = list()
+                for col in CONDITION_CHECK_COLS:
+                    if row[col] == "":
+                        missing_col_list.append(col)
 
-            price = _parse_amount(row["price"])
-            if price is None:
-                report(row_num, f"price '{row['price']}' is not a number")
-                continue
+                if len(missing_col_list) != 0:
+                    missing_column_dict[row_num] = missing_col_list
+                    continue
 
-            if row_type == "buy":
                 person_paid_for_it = row["from"]
                 who = row["who"]
+                tax_flag = row["tax_flg"]
+                row_tax_rate = tax_flag
+                if tax_flag == "y":
+                    row_tax_rate = tax_rate
+                elif tax_flag == "":
+                    row_tax_rate = 0
 
-                row_tax_rate = _parse_tax(row["tax_flg"], tax_rate)
-                if row_tax_rate is None:
-                    report(row_num, f"tax_flg '{row['tax_flg']}' not understood (use y, n, empty or a rate)")
-                    continue
+                user_share_pair = dict()
+                total_share = 0
+                if "(" in who:
+                    user_n_share_search = _USER_SHARE_RE.findall(who)
 
-                user_share_pair = _parse_who(who, row_num)
-                total_share = sum(user_share_pair.values())
-                if total_share <= 0:
-                    report(row_num, f"who '{who}' has no positive shares")
-                    continue
-                unknown = [u for u in user_share_pair if u not in result]
-                if unknown:
-                    report(row_num, f"cannot read names {unknown} in who '{who}'")
-                    continue
-
-                if pd.isna(row["date"]):
-                    # still counted in the balances, just not by date
-                    report(row_num, "date not recognised (use YYYY-MM-DD); "
-                                    "excluded from summaries and report")
+                    for combination in user_n_share_search:
+                        name = combination[0].strip()
+                        share = combination[1].strip()
+                        if share != "":
+                            try:
+                                share = float(share)
+                            except ValueError:
+                                logger.warning(
+                                    "row %s: cannot parse share %r in who=%r; "
+                                    "defaulting to 1", row_num, share, who)
+                                share = 1
+                        else:
+                            share = 1
+                        total_share += share
+                        user_share_pair[name] = share
+                else:
+                    users_in_who = who.split(",")
+                    for user in users_in_who:
+                        user = user.strip()
+                        user_share_pair[user] = 1
+                        total_share += 1
 
                 for user in user_share_pair:
                     user_share_percentage = user_share_pair[user] / total_share
-                    price_each_user = price * (1 + row_tax_rate) * user_share_percentage
+                    price_each_user = row["price"] * (1 + row_tax_rate) * user_share_percentage
 
                     if user != person_paid_for_it:
-                        result[user][person_paid_for_it] += price_each_user
+                        try:
+                            result[user][person_paid_for_it] += price_each_user
+                        except KeyError:
+                            # keep the page up; one bad row must not 500 "/"
+                            logger.warning(
+                                "row %s: unknown user %r or payer %r; "
+                                "debt of %.2f skipped", row_num, user,
+                                person_paid_for_it, price_each_user)
 
                     user_stat["date"].append(row["date"])
-                    user_stat["paid_by"].append(person_paid_for_it)
+                    user_stat["paid_by"].append(row["from"])
                     user_stat["merchant"].append(row["to"])
                     user_stat["user"].append(user)
                     user_stat["amount"].append(price_each_user)
                     user_stat["event_tag"].append(row["tag"])
                     user_stat["category"].append(row["category"])
 
-            elif row_type == "pay":
+            elif row["type"] == "pay":
                 from_who = row["from"]
                 to_who = row["to"]
-                how_much = -abs(price)
+                how_much = -abs(row["price"])
                 result[to_who][from_who] -= how_much
-            elif row_type == "debt_trans":
+            elif row["type"] == "debt_trans":
                 from_who = row["from"]
                 to_who = row["to"]
-                about_who = str(row["who"]).strip()
-                if about_who not in result:
-                    report(row_num, f"who '{row['who']}' must be a single name")
-                    continue
-                how_much = price
+                how_much = row["price"]
+                about_who = row["who"]
 
                 result[from_who][to_who] -= how_much
                 result[about_who][to_who] += how_much
                 result[about_who][from_who] -= how_much
-            elif row_type == "debt_adj":
+            elif row["type"] == "debt_adj":
                 from_who = row["from"]
                 to_who = row["to"]
-                how_much = price
+                how_much = row["price"]
                 result[from_who][to_who] += how_much
 
         # 去掉0和empty node
